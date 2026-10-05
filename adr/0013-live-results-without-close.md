@@ -28,3 +28,6 @@ asOf는 조회 시각이지 마감 확정 시각이 아닙니다. 캡처 이후 
 
 - [src/main/kotlin/com/tooja/Controllers.kt](../src/main/kotlin/com/tooja/Controllers.kt)
 - [src/main/kotlin/com/tooja/InvestmentService.kt](../src/main/kotlin/com/tooja/InvestmentService.kt)
+
+
+2026-10-05: 전체 접수 중지·재개는 [ADR 0025](0025-investment-pause-resume.md)로 변경했어요. 결과 동결·자동 감점은 여전히 제공하지 않아요.

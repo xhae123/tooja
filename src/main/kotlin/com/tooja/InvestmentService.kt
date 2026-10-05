@@ -7,13 +7,24 @@ import java.util.UUID
 
 @Service
 class InvestmentService(private val db: Database, private val clock: Clock) {
+    private fun control(): InvestmentStatus {
+        val r=db.jdbc.queryForMap("SELECT status,revision,updated_at FROM investment_control WHERE id=1")
+        return InvestmentStatus(InvestmentMode.valueOf(r["status"].toString()),(r["revision"] as Number).toLong(),r["updated_at"]?.let { Instant.parse(it.toString()) })
+    }
+    fun investmentStatus(): InvestmentStatus = db.read { control() }
+    // Shares the investment write lock and SQLite transaction: no new investment
+    // can pass the guard after a successful pause response.
+    fun updateInvestmentStatus(status: InvestmentMode): InvestmentStatus = db.write {
+        db.jdbc.update("UPDATE investment_control SET status=?,revision=revision+1,updated_at=? WHERE id=1 AND status<>?",status.name,clock.instant().toString(),status.name)
+        control()
+    }
     private fun investorRow(r: Map<String,Any?>): Investor {
         val activated=(r["activated"] as Number).toInt()==1;val balance=(r["balance"] as Number).toInt()
         return Investor(r["id"].toString(),r["alias"].toString(),r["kind"].toString(),(r["team_id"] as Number?)?.toInt(),activated,if(activated)1000000 else 0,if(activated)1000000-balance else 0,balance,if(!activated)"NOT_ACTIVATED" else if(balance==0)"COMPLETED" else "UNSPENT")
     }
     fun investor(id: String): Investor = db.jdbc.queryForList("SELECT * FROM accounts WHERE id=? AND role='INVESTOR' AND deleted_at IS NULL",id).firstOrNull()?.let(::investorRow)
         ?: throw ApiException(404,"RESOURCE_NOT_FOUND","투자자를 찾을 수 없습니다.")
-    fun teams(id: String): TeamList = db.read { val i=investor(id); TeamList(i,db.jdbc.queryForList("SELECT * FROM teams ORDER BY id").map { team(i,it) },clock.instant()) }
+    fun teams(id: String): TeamList = db.read { val i=investor(id); TeamList(i,db.jdbc.queryForList("SELECT * FROM teams ORDER BY id").map { team(i,it) },clock.instant(),control()) }
     private fun team(i: Investor,r: Map<String,Any?>): Team {
         val tid=(r["id"] as Number).toInt()
         val amount=db.jdbc.queryForList("SELECT amount FROM investments WHERE account_id=? AND team_id=?",i.investorId,tid).firstOrNull()?.get("amount")?.let{(it as Number).toInt()}?:0
@@ -22,7 +33,7 @@ class InvestmentService(private val db: Database, private val clock: Clock) {
     }
     fun teamDetail(id: String,tid: Int): TeamDetail = db.read {
         val i=investor(id);val r=db.jdbc.queryForList("SELECT * FROM teams WHERE id=?",tid).firstOrNull() ?: throw ApiException(404,"RESOURCE_NOT_FOUND","팀을 찾을 수 없습니다.")
-        TeamDetail(i,team(i,r),clock.instant())
+        TeamDetail(i,team(i,r),clock.instant(),control())
     }
     private fun investment(r: Map<String,Any?>) = Investment(r["id"].toString(),(r["team_id"] as Number).toInt(),r["name"].toString(),(r["amount"] as Number).toInt(),Instant.parse(r["confirmed_at"].toString()))
     fun history(id: String): InvestmentHistory = db.read {
@@ -45,6 +56,9 @@ class InvestmentService(private val db: Database, private val clock: Clock) {
                 if(previous["status"]=="SUCCEEDED") return@write receipt(previous["investment_id"].toString())
                 return@write ApiException((previous["http_status"] as Number).toInt(),previous["error_code"].toString(),previous["error_message"].toString())
             }
+            // A temporary pause does not consume the key. Committed requests
+            // above remain recoverable in either mode.
+            if(control().status==InvestmentMode.PAUSED) return@write ApiException(409,"INVESTMENT_PAUSED","지금은 투자가 중지되어 있어요. 관리자가 재개하면 다시 투자할 수 있어요.")
             val i=investor(id)
             val failure=when {
                 db.jdbc.queryForObject("SELECT COUNT(*) FROM teams WHERE id=?",Int::class.java,input.teamId)==0 -> ApiException(404,"RESOURCE_NOT_FOUND","팀을 찾을 수 없습니다.")
@@ -80,7 +94,7 @@ class InvestmentService(private val db: Database, private val clock: Clock) {
     }
     fun updateAlias(id: String,alias: String): Investor = db.write { investor(id);db.jdbc.update("UPDATE accounts SET alias=? WHERE id=?",alias,id);investor(id) }
     private fun metrics(items: List<Investor>): Metrics = Metrics(items.size,items.count { it.hasLoggedIn },items.count { !it.hasLoggedIn },items.count { it.investedAmount>0 },items.sumOf { it.issuedAmount.toLong() },items.sumOf { it.investedAmount.toLong() },items.sumOf { it.balance.toLong() },items.count { it.spendingStatus=="COMPLETED" },items.count { it.spendingStatus=="UNSPENT" })
-    fun overview(): Overview = db.read { val all=list(null,null,null,null).items;Overview(metrics(all),metrics(all.filter{it.kind=="PARTICIPANT"}),metrics(all.filter{it.kind=="STAFF"}),clock.instant(),db.jdbc.queryForObject("SELECT version FROM metadata WHERE id=1",Long::class.java)!!) }
+    fun overview(): Overview = db.read { val all=list(null,null,null,null).items;Overview(metrics(all),metrics(all.filter{it.kind=="PARTICIPANT"}),metrics(all.filter{it.kind=="STAFF"}),clock.instant(),db.jdbc.queryForObject("SELECT version FROM metadata WHERE id=1",Long::class.java)!!,control()) }
     fun dashboard(): Dashboard = db.read {
         val rows=db.jdbc.queryForList("SELECT t.id,t.name,COALESCE(SUM(i.amount),0) AS amount FROM teams t LEFT JOIN investments i ON i.team_id=t.id GROUP BY t.id,t.name").map { Triple((it["id"] as Number).toInt(),it["name"].toString(),(it["amount"] as Number).toLong()) }
         Dashboard(db.jdbc.queryForObject("SELECT version FROM metadata WHERE id=1",Long::class.java)!!,clock.instant(),rows.sumOf{it.third},db.jdbc.queryForObject("SELECT COUNT(DISTINCT account_id) FROM investments",Int::class.java)!!,Policy.rank(rows))

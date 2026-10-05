@@ -48,7 +48,7 @@ class InvestorController(private val service: InvestmentService) {
     @GetMapping("/teams/{teamId}") @Operation(operationId="getTeam",summary="[투자자] 부스 소개·투자 가능 상태",description=OperationDescriptions.GET_TEAM)
     fun team(@PathVariable teamId: Int,req: HttpServletRequest): TeamDetail=service.teamDetail(principal(req),teamId)
     @PostMapping("/investments") @Operation(operationId="createInvestment",summary="[투자자] 투자 확정",description=OperationDescriptions.CREATE_INVESTMENT)
-    @ApiResponses(ApiResponse(responseCode="201",description="투자 확정 또는 기존 성공 복구"),ApiResponse(responseCode="409",description="이미 투자한 팀 / 잔액 부족 / 다른 본문으로 요청 키 재사용"))
+    @ApiResponses(ApiResponse(responseCode="201",description="투자 확정 또는 기존 성공 복구"),ApiResponse(responseCode="409",description="투자 중지 / 이미 투자한 팀 / 잔액 부족 / 다른 본문으로 요청 키 재사용"))
     fun create(@RequestHeader("Idempotency-Key") key: String,@Valid @RequestBody body: InvestmentInput,req: HttpServletRequest): ResponseEntity<InvestmentReceipt> { Policy.validateAmount(body.amount);val r=service.create(principal(req),requestKey(key),body);return ResponseEntity.created(URI.create("/api/v1/investor/investments/${r.investment.investmentId}")).body(r) }
     @GetMapping("/investment-requests/{requestKey}") @Operation(operationId="getInvestmentRequest",summary="[투자자] 응답이 끊긴 투자 결과 확인",description=OperationDescriptions.GET_REQUEST)
     fun result(@PathVariable requestKey: String,req: HttpServletRequest): RequestResult=service.result(principal(req),requestKey(requestKey))
@@ -59,8 +59,10 @@ class InvestorController(private val service: InvestmentService) {
 }
 @RestController
 @RequestMapping("/api/v1/admin", produces=["application/json"]) @Access("admin") @SecurityRequirement(name="AdminSession")
-@Tag(name="03 관리자",description="운영팀 투자자와 관리자 권한은 별개입니다. 조회와 별칭 수정만 제공합니다.")
+@Tag(name="03 관리자",description="운영팀 투자자와 관리자 권한은 별개입니다. 조회·별칭 수정과 전체 투자 중지·재개를 제공합니다.")
 class AdminController(private val service: InvestmentService) {
+    @PatchMapping("/investment-status") @Operation(operationId="updateInvestmentStatus",summary="[관리자] 전체 투자 중지·재개",description=OperationDescriptions.UPDATE_INVESTMENT_STATUS)
+    fun investmentStatus(@Valid @RequestBody body: InvestmentStatusInput): InvestmentStatus=service.updateInvestmentStatus(body.status)
     @GetMapping("/overview") @Operation(operationId="getOverview",summary="[관리자] 전체·역할별 지급·소진 현황",description=OperationDescriptions.GET_OVERVIEW)
     fun overview(): Overview=service.overview()
     @GetMapping("/investors") @Operation(operationId="listInvestors",summary="[관리자] 투자자 검색·필터",description=OperationDescriptions.LIST_INVESTORS)
@@ -75,6 +77,8 @@ class AdminController(private val service: InvestmentService) {
 }
 @RestController @RequestMapping(produces=["application/json"]) @Tag(name="04 공개 대시보드")
 class PublicController(private val service: InvestmentService) {
+    @GetMapping("/api/v1/public/investment-status") @Operation(operationId="getInvestmentStatus",summary="[모두 허용] 투자 접수 상태 확인",description=OperationDescriptions.GET_INVESTMENT_STATUS)
+    fun investmentStatus(): InvestmentStatus=service.investmentStatus()
     @GetMapping("/api/v1/public/dashboard") @Operation(operationId="getDashboard",summary="[모두 허용] 20개 팀의 실시간 순위",description=OperationDescriptions.GET_DASHBOARD)
     fun dashboard(): Dashboard=service.dashboard()
 }

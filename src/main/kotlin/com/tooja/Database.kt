@@ -33,7 +33,9 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
             "CREATE TABLE IF NOT EXISTS investments(id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id), team_id INTEGER NOT NULL REFERENCES teams(id), amount INTEGER NOT NULL CHECK(amount BETWEEN 100000 AND 700000 AND amount%100000=0), confirmed_at TEXT NOT NULL, balance_after INTEGER NOT NULL CHECK(balance_after>=0), version INTEGER NOT NULL, UNIQUE(account_id,team_id))",
             "CREATE TABLE IF NOT EXISTS requests(account_id TEXT NOT NULL REFERENCES accounts(id), request_key TEXT NOT NULL, team_id INTEGER NOT NULL, amount INTEGER NOT NULL, status TEXT NOT NULL, investment_id TEXT REFERENCES investments(id), http_status INTEGER, error_code TEXT, error_message TEXT, PRIMARY KEY(account_id,request_key))",
             "CREATE TABLE IF NOT EXISTS metadata(id INTEGER PRIMARY KEY CHECK(id=1), version INTEGER NOT NULL DEFAULT 0)",
-            "INSERT OR IGNORE INTO metadata(id,version) VALUES(1,0)"
+            "INSERT OR IGNORE INTO metadata(id,version) VALUES(1,0)",
+            "CREATE TABLE IF NOT EXISTS investment_control(id INTEGER PRIMARY KEY CHECK(id=1), status TEXT NOT NULL CHECK(status IN ('RUNNING','PAUSED')), revision INTEGER NOT NULL DEFAULT 0 CHECK(revision>=0), updated_at TEXT)",
+            "INSERT OR IGNORE INTO investment_control(id,status,revision) VALUES(1,'RUNNING',0)"
         ).forEach(jdbc::execute)
         require(provisioningMode in listOf("required","manual")) { "Unknown provisioning mode" }
         if (env.activeProfiles.any { it in listOf("demo","test") }) seedDemo() else if(provisioningMode=="required") importProvisioning()
@@ -60,6 +62,6 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
         }
     }
     fun reset() = write {
-        listOf("requests","investments","grants","sessions","contexts","accounts","teams").forEach { jdbc.update("DELETE FROM $it") };jdbc.update("UPDATE metadata SET version=0");true
+        listOf("requests","investments","grants","sessions","contexts","accounts","teams").forEach { jdbc.update("DELETE FROM $it") };jdbc.update("UPDATE metadata SET version=0");jdbc.update("UPDATE investment_control SET status='RUNNING',revision=0,updated_at=NULL WHERE id=1");true
     }.also { seedDemo() }
 }

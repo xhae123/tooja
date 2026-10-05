@@ -41,12 +41,21 @@ compose up -d --wait --wait-timeout 120
 # Loopback crosses nginx while overseas HTTP access stays blocked.
 # This is checked on the SSH-authenticated host, not exempted for GitHub IPs.
 origin=$(sed -n 's/^APP_ORIGIN=//p' "$TOOJA_HOME/runtime.env")
-edge_url=http://127.0.0.1
-edge_host=${origin#http://}
-curl --fail --retry 5 --retry-delay 2 -H "Host: $edge_host" "$edge_url/actuator/health"
-curl --fail -H "Host: $edge_host" "$edge_url/v3/api-docs" -o "$RELEASE_DIR/reports/openapi.json"
-curl --fail -H "Host: $edge_host" "$edge_url/reports/allure/index.html" -o /dev/null
-curl --fail -H "Host: $edge_host" "$edge_url/deployment.json" -o "$RELEASE_DIR/reports/verified-deployment.json"
+# Resolve the public hostname to loopback, preserving HTTPS SNI and certificate verification.
+read -r edge_host edge_port < <(python3 - "$origin" <<'PYORIGIN'
+import sys
+from urllib.parse import urlsplit
+u=urlsplit(sys.argv[1])
+assert u.scheme in ('http','https') and u.hostname and not u.username and not u.password
+assert u.path in ('','/') and not u.query and not u.fragment
+print(u.hostname, u.port or (443 if u.scheme=='https' else 80))
+PYORIGIN
+)
+edge_curl() { curl --fail --resolve "$edge_host:$edge_port:127.0.0.1" "$@"; }
+edge_curl --retry 5 --retry-delay 2 "$origin/actuator/health"
+edge_curl "$origin/v3/api-docs" -o "$RELEASE_DIR/reports/openapi.json"
+edge_curl "$origin/reports/allure/index.html" -o /dev/null
+edge_curl "$origin/deployment.json" -o "$RELEASE_DIR/reports/verified-deployment.json"
 python3 - "$RELEASE_DIR" <<'PYVERIFY'
 import json,sys
 from pathlib import Path

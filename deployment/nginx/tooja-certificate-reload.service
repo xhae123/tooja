@@ -1,0 +1,6 @@
+[Unit]
+Description=Load renewed tooja TLS certificate after nginx validation
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/home/ubuntu/edge/reload-renewed-certificate.sh

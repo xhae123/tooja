@@ -6,3 +6,5 @@ data
 .git
 .local
 ci/node_modules
+
+.kotlin

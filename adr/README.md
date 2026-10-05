@@ -30,3 +30,5 @@
 - [0023 · nginx 국가 차단과 서비스 전체 요청 제한](0023-nginx-country-and-service-rate-limit.md)
 
 - [0024 · 성공한 현재 배포 산출물만 보존](0024-current-release-only.md)
+
+- [0025 · 전체 투자 접수를 중지·재개해요](0025-investment-pause-resume.md)
