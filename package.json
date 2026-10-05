@@ -1,0 +1,14 @@
+{
+  "name": "tooja-quality",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test",
+    "report:allure": "node scripts/prepare-allure.mjs && allure generate reports/raw/allure-prepared -o reports/allure --clean --single-file",
+    "report:quality": "node scripts/quality-report.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "allure-playwright": "3.13.0",
+    "allure-commandline": "2.46.1"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "qaImage": "sha256:56d6480324baba5d28a6b7625d771324f255c090f15cf458385b1e9e650cfeed",
+  "appImage": "sha256:c3e30c448e8b83be6474494ff7863f6295d3574c07b47ab06eb559de8a13fc02",
+  "qaJarSha256": "98627d3b401dcd962dd0b3f66ed04a0f03974fc4af4c65136ee09601fa331952",
+  "nodeVersion": "v24.4.1",
+  "composeVersion": "2.39.2-desktop.1"
+}

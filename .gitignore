@@ -1,0 +1,15 @@
+.gradle/
+build/
+node_modules/
+data/
+.env
+reports/raw/
+allure-results/
+test-results/
+
+# Local/generated execution artifacts
+reports/playwright/
+__pycache__/
+.DS_Store
+.env.*
+!.env.example

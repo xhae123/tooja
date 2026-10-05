@@ -1,0 +1,6 @@
+app:
+  secure-cookies: false
+  pepper: isolated-test-pepper
+spring:
+  thymeleaf:
+    cache: false

@@ -1,0 +1,37 @@
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:${APP_PORT:-18080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${APP_PROFILE:-demo}
+      APP_ORIGIN: http://localhost:${APP_PORT:-18080}
+      DB_PATH: /app/data/tooja.db
+      CODE_PEPPER: ${CODE_PEPPER:-demo-only-change-before-production}
+      SECURE_COOKIES: ${SECURE_COOKIES:-false}
+    volumes:
+      - app-data:/app/data
+      - ./reports:/app/reports:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080; printf 'GET /actuator/health HTTP/1.0\r\n\r\n' >&3; cat <&3 | grep -q UP"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  qa:
+    extends:
+      service: app
+    profiles: ["qa"]
+    ports: !override
+      - "127.0.0.1:18081:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: test
+      APP_ORIGIN: http://localhost:18081
+      CODE_PEPPER: isolated-test-pepper
+      QA_KEY: test-only-local
+    volumes: !override
+      - qa-data:/app/data
+      - ./reports:/app/reports:ro
+volumes:
+  app-data:
+  qa-data:

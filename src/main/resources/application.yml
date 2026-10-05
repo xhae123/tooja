@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: tooja
+  datasource:
+    url: jdbc:sqlite:${DB_PATH:./data/tooja.db}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 8
+      connection-init-sql: PRAGMA foreign_keys=ON
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+      accept-float-as-int: false
+  thymeleaf:
+    cache: true
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+app:
+  origin: ${APP_ORIGIN:http://localhost:8080}
+  secure-cookies: ${SECURE_COOKIES:true}
+  pepper: ${CODE_PEPPER:}
+  accounts-csv: ${ACCOUNTS_CSV:}
+  teams-csv: ${TEAMS_CSV:}
+springdoc:
+  swagger-ui:
+    path: /api-docs
+    tags-sorter: alpha
+    operations-sorter: alpha
+    default-models-expand-depth: -1
