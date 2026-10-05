@@ -76,7 +76,7 @@ jobs:
         env:
           DEPLOY_KEY: ${{ secrets.OCI_DEPLOY_KEY }}
           KNOWN_HOSTS: ${{ secrets.OCI_KNOWN_HOSTS }}
-          DEPLOY_HOST: ${{ secrets.OCI_HOST }}
+          DEPLOY_HOST: ${{ vars.OCI_HOST }}
           DEPLOY_USER: ${{ secrets.OCI_USER }}
         run: |
           install -d -m 700 ~/.ssh
