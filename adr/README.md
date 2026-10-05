@@ -34,3 +34,9 @@
 - [0025 · 전체 투자 접수를 중지·재개해요](0025-investment-pause-resume.md)
 
 - [0026 · Swagger는 문서를 연 주소로 API를 호출해요](0026-swagger-same-origin.md)
+
+- [ADR 0027: 운영 DB를 관리형 MySQL로 옮겨요](0027-managed-mysql.md)
+- [ADR 0028: MySQL 스키마는 Flyway SQL로 변경해요](0028-flyway-mysql-schema.md)
+- [ADR 0029: 공유 진입점을 OCI LB와 WAF로 바꿔요](0029-managed-lb-waf.md)
+- [ADR 0030: WAF는 IP별로 여유 있게 요청을 제한해요](0030-waf-per-ip-limit.md)
+- [ADR 0031: 인프라 기록은 oci-man 안에 통합해요](0031-infra-skill-records.md)

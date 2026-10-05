@@ -36,12 +36,10 @@ print('Consistent SQLite backup recorded before application replacement')
 PY
 fi
 compose up -d --wait --wait-timeout 120
-# nginx is configured once by the operator, and resolves app through Docker DNS.
-# Deployments do not modify, rebuild, restart or reload nginx.
-# Loopback crosses nginx while overseas HTTP access stays blocked.
-# This is checked on the SSH-authenticated host, not exempted for GitHub IPs.
+# Operator manages the edge separately; app deployments never change LB/WAF.
+# SSH-authenticated host checks use the managed LB, without exempting GitHub IPs.
 origin=$(sed -n 's/^APP_ORIGIN=//p' "$TOOJA_HOME/runtime.env")
-# Resolve the public hostname to loopback, preserving HTTPS SNI and certificate verification.
+# Resolve the public hostname to the selected edge, preserving HTTPS SNI and certificate verification.
 read -r edge_host edge_port < <(python3 - "$origin" <<'PYORIGIN'
 import sys
 from urllib.parse import urlsplit
@@ -77,7 +75,7 @@ mv -Tf "$TOOJA_HOME/current.next" "$TOOJA_HOME/current"
 trap - ERR
 printf '\nRelease activated: %s\n' "$RELEASE_ID"
 
-# Cleanup starts only after the new app and nginx checks succeeded.
+# Cleanup starts only after the new app and edge checks succeeded.
 # No past application release is retained after a successful deployment.
 python3 - "$TOOJA_HOME" "$RELEASE_ID" <<'PYCLEANUP'
 import json,re,shutil,subprocess,sys

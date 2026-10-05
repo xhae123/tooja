@@ -1,5 +1,7 @@
 # ADR 0001: Kotlin·Spring Boot·SQLite를 사용한다
 
+> 이 문서는 이전 선택의 기록이에요. 현재 선택은 [0027-managed-mysql.md](0027-managed-mysql.md)를 확인해 주세요.
+
 기록일: 2026-10-05 · 결정 출처: 사용자 지정
 
 ## 배경

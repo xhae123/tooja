@@ -28,3 +28,7 @@
 
 - [src/main/kotlin/com/tooja/Database.kt](../src/main/kotlin/com/tooja/Database.kt)
 - [src/main/kotlin/com/tooja/WebConfig.kt](../src/main/kotlin/com/tooja/WebConfig.kt)
+
+## MySQL 전환 후
+
+단일 앱이라는 전제는 유지해서 JVM 쓰기 잠금도 유지해요. MySQL은 InnoDB 트랜잭션으로 커밋하며 SQLite PRAGMA/WAL 설정은 MySQL 프로필에서 실행하지 않아요. 앱을 여러 대로 늘릴 때에는 이 잠금을 DB row lock 등으로 바꿔야 해요.

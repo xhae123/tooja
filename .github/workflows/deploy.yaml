@@ -111,7 +111,7 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           ssh -T -i ~/.ssh/tooja-deploy -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" < release/release.tar.gz | tee /tmp/tooja-deploy.log
           rm -f ~/.ssh/tooja-deploy
-      - name: Verify SSH-authenticated nginx checks and matching report commit
+      - name: Verify SSH-authenticated edge checks and matching report commit
         env:
           APP_URL: ${{ vars.APP_URL }}
           EXPECTED_COMMIT: ${{ github.sha }}
@@ -124,7 +124,7 @@ jobs:
           m=json.loads(evidence[0])
           assert m['commit']==os.environ['EXPECTED_COMMIT'],m
           assert m['tests']['e2e']==0 and m['tests']['failed']==0,m
-          print('Nginx health/OpenAPI/Allure verified on host. Deployed commit:',m['commit'],'Tests:',m['tests'])
+          print('Managed edge health/OpenAPI/Allure verified on host. Deployed commit:',m['commit'],'Tests:',m['tests'])
           PY
           # shellcheck disable=SC2016
           printf 'Deployed `%s`\n\n- [Swagger](%s/api-docs)\n- [Allure: unit/integration only](%s/reports/allure/)\n' "$EXPECTED_COMMIT" "$APP_URL" "$APP_URL" >> "$GITHUB_STEP_SUMMARY"

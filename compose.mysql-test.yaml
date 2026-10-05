@@ -1,0 +1,13 @@
+# Isolated contract-test DB. Never point test profiles at the production DB.
+services:
+  mysql:
+    image: mysql:9.4@sha256:135bc87cce147c3d28cecb9ad270b814cb52805af7ddeea83bfcaf157d05a6b2
+    ports: ["127.0.0.1:13306:3306"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ci-test-only
+      MYSQL_DATABASE: tooja_test
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
