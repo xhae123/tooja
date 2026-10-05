@@ -8,7 +8,11 @@ import org.springframework.web.bind.annotation.PathVariable
 @Controller
 class Pages {
     private fun page(model: Model,id: String,detail: String=""): String { model.addAttribute("screen",id);model.addAttribute("detail",detail);return "page" }
-    @GetMapping("/") fun root()="redirect:/login"
+    // TEMPORARY: remove the demoAccess flag/panel before using real event codes.
+    @GetMapping("/") fun root(m: Model): String {
+        m.addAttribute("demoAccess",true)
+        return page(m,"P01")
+    }
     @GetMapping("/login") fun login(m: Model)=page(m,"P01")
     @GetMapping("/invest") fun home(m: Model)=page(m,"P02")
     @GetMapping("/invest/teams/{teamId}") fun team(m: Model,@PathVariable teamId: String)=page(m,"P03",teamId)

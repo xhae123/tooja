@@ -1,0 +1,163 @@
+<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><body>
+<!-- TEMPORARY DEMO ONLY: remove this fragment, the root() flag and .demo-access CSS
+     before real event provisioning. All 143 entries below are synthetic fixtures
+     explicitly requested for public display. Never replace them with real codes.
+     Static snapshot: 2026-10-05; not connected to the production database. -->
+<aside th:fragment="panel" class="demo-access" aria-labelledby="demo-access-title">
+  <div class="demo-access-head"><span class="demo-label">DEMO</span><h2 id="demo-access-title">테스트 바로가기</h2><p>가상 계정으로 로그인해 보세요.</p></div>
+  <div class="demo-shortcuts">
+    <a class="button" href="/api-docs" target="_blank" rel="noopener noreferrer">API 문서 ↗</a>
+    <a class="button secondary" href="/reports/allure/" target="_blank" rel="noopener noreferrer">테스트 리포트 ↗</a>
+  </div>
+  <div class="demo-list-heading"><h3>더미 계정</h3><span>143개 · 정적 명단</span></div>
+  <div class="demo-account-list" tabindex="0" aria-label="더미 계정 목록">
+<section class="demo-account-group"><h3>관리자 <small>3명</small></h3><table><thead><tr><th scope="col">팀</th><th scope="col">이름</th><th scope="col">코드</th></tr></thead><tbody>
+<tr><td>관리자</td><td>행사 총괄 관리자</td><td><code>6867</code></td></tr>
+<tr><td>관리자</td><td>현장 진행 관리자</td><td><code>4621</code></td></tr>
+<tr><td>관리자</td><td>투자 현황 관리자</td><td><code>8440</code></td></tr>
+</tbody></table></section>
+<section class="demo-account-group"><h3>참가자 <small>120명</small></h3><table><thead><tr><th scope="col">팀</th><th scope="col">이름</th><th scope="col">코드</th></tr></thead><tbody>
+<tr><td>TEAM 01</td><td>이예준</td><td><code>6096</code></td></tr>
+<tr><td>TEAM 01</td><td>송유준</td><td><code>4498</code></td></tr>
+<tr><td>TEAM 01</td><td>서시우</td><td><code>7203</code></td></tr>
+<tr><td>TEAM 01</td><td>조하은</td><td><code>1440</code></td></tr>
+<tr><td>TEAM 01</td><td>전지호</td><td><code>7993</code></td></tr>
+<tr><td>TEAM 01</td><td>정건우</td><td><code>8615</code></td></tr>
+<tr><td>TEAM 02</td><td>한하은</td><td><code>3408</code></td></tr>
+<tr><td>TEAM 02</td><td>신민준</td><td><code>7749</code></td></tr>
+<tr><td>TEAM 02</td><td>장시우</td><td><code>1094</code></td></tr>
+<tr><td>TEAM 02</td><td>오유진</td><td><code>6694</code></td></tr>
+<tr><td>TEAM 02</td><td>장지민</td><td><code>2043</code></td></tr>
+<tr><td>TEAM 02</td><td>이현우</td><td><code>5236</code></td></tr>
+<tr><td>TEAM 03</td><td>정예준</td><td><code>8941</code></td></tr>
+<tr><td>TEAM 03</td><td>조지민</td><td><code>9762</code></td></tr>
+<tr><td>TEAM 03</td><td>박윤서</td><td><code>0051</code></td></tr>
+<tr><td>TEAM 03</td><td>김다은</td><td><code>4655</code></td></tr>
+<tr><td>TEAM 03</td><td>정유진</td><td><code>7544</code></td></tr>
+<tr><td>TEAM 03</td><td>최도윤</td><td><code>2977</code></td></tr>
+<tr><td>TEAM 04</td><td>오다은</td><td><code>1839</code></td></tr>
+<tr><td>TEAM 04</td><td>전채원</td><td><code>3832</code></td></tr>
+<tr><td>TEAM 04</td><td>홍지민</td><td><code>1282</code></td></tr>
+<tr><td>TEAM 04</td><td>정하은</td><td><code>0950</code></td></tr>
+<tr><td>TEAM 04</td><td>조서연</td><td><code>4529</code></td></tr>
+<tr><td>TEAM 04</td><td>송도윤</td><td><code>9577</code></td></tr>
+<tr><td>TEAM 05</td><td>최유진</td><td><code>7211</code></td></tr>
+<tr><td>TEAM 05</td><td>김도윤</td><td><code>3379</code></td></tr>
+<tr><td>TEAM 05</td><td>안하은</td><td><code>5464</code></td></tr>
+<tr><td>TEAM 05</td><td>임지민</td><td><code>9217</code></td></tr>
+<tr><td>TEAM 05</td><td>최현우</td><td><code>7147</code></td></tr>
+<tr><td>TEAM 05</td><td>김윤서</td><td><code>3230</code></td></tr>
+<tr><td>TEAM 06</td><td>송채원</td><td><code>5874</code></td></tr>
+<tr><td>TEAM 06</td><td>권서연</td><td><code>1779</code></td></tr>
+<tr><td>TEAM 06</td><td>임채원</td><td><code>9863</code></td></tr>
+<tr><td>TEAM 06</td><td>전서연</td><td><code>1837</code></td></tr>
+<tr><td>TEAM 06</td><td>장도윤</td><td><code>6183</code></td></tr>
+<tr><td>TEAM 06</td><td>박유준</td><td><code>1940</code></td></tr>
+<tr><td>TEAM 07</td><td>조유준</td><td><code>8691</code></td></tr>
+<tr><td>TEAM 07</td><td>장윤서</td><td><code>5006</code></td></tr>
+<tr><td>TEAM 07</td><td>안지우</td><td><code>0295</code></td></tr>
+<tr><td>TEAM 07</td><td>한지호</td><td><code>3793</code></td></tr>
+<tr><td>TEAM 07</td><td>오윤서</td><td><code>6363</code></td></tr>
+<tr><td>TEAM 07</td><td>박시우</td><td><code>2091</code></td></tr>
+<tr><td>TEAM 08</td><td>최준서</td><td><code>2787</code></td></tr>
+<tr><td>TEAM 08</td><td>오예준</td><td><code>7721</code></td></tr>
+<tr><td>TEAM 08</td><td>홍지우</td><td><code>0164</code></td></tr>
+<tr><td>TEAM 08</td><td>오도윤</td><td><code>5316</code></td></tr>
+<tr><td>TEAM 08</td><td>오준서</td><td><code>9971</code></td></tr>
+<tr><td>TEAM 08</td><td>장다은</td><td><code>4590</code></td></tr>
+<tr><td>TEAM 09</td><td>서수아</td><td><code>9857</code></td></tr>
+<tr><td>TEAM 09</td><td>강지우</td><td><code>8004</code></td></tr>
+<tr><td>TEAM 09</td><td>신유진</td><td><code>0603</code></td></tr>
+<tr><td>TEAM 09</td><td>윤건우</td><td><code>3801</code></td></tr>
+<tr><td>TEAM 09</td><td>권지민</td><td><code>9158</code></td></tr>
+<tr><td>TEAM 09</td><td>오서윤</td><td><code>2027</code></td></tr>
+<tr><td>TEAM 10</td><td>강민준</td><td><code>8572</code></td></tr>
+<tr><td>TEAM 10</td><td>김채원</td><td><code>0955</code></td></tr>
+<tr><td>TEAM 10</td><td>윤지민</td><td><code>6280</code></td></tr>
+<tr><td>TEAM 10</td><td>장현우</td><td><code>5180</code></td></tr>
+<tr><td>TEAM 10</td><td>윤유준</td><td><code>5871</code></td></tr>
+<tr><td>TEAM 10</td><td>장지호</td><td><code>2860</code></td></tr>
+<tr><td>TEAM 11</td><td>전시우</td><td><code>9801</code></td></tr>
+<tr><td>TEAM 11</td><td>한서윤</td><td><code>9533</code></td></tr>
+<tr><td>TEAM 11</td><td>이시우</td><td><code>6666</code></td></tr>
+<tr><td>TEAM 11</td><td>김유준</td><td><code>3924</code></td></tr>
+<tr><td>TEAM 11</td><td>황현우</td><td><code>3096</code></td></tr>
+<tr><td>TEAM 11</td><td>장예준</td><td><code>2178</code></td></tr>
+<tr><td>TEAM 12</td><td>서유준</td><td><code>1141</code></td></tr>
+<tr><td>TEAM 12</td><td>정준서</td><td><code>9711</code></td></tr>
+<tr><td>TEAM 12</td><td>서지우</td><td><code>1439</code></td></tr>
+<tr><td>TEAM 12</td><td>오지호</td><td><code>3796</code></td></tr>
+<tr><td>TEAM 12</td><td>황지호</td><td><code>6643</code></td></tr>
+<tr><td>TEAM 12</td><td>박예준</td><td><code>8094</code></td></tr>
+<tr><td>TEAM 13</td><td>이서윤</td><td><code>9493</code></td></tr>
+<tr><td>TEAM 13</td><td>홍윤서</td><td><code>4019</code></td></tr>
+<tr><td>TEAM 13</td><td>서지민</td><td><code>9063</code></td></tr>
+<tr><td>TEAM 13</td><td>강준서</td><td><code>8962</code></td></tr>
+<tr><td>TEAM 13</td><td>최건우</td><td><code>7851</code></td></tr>
+<tr><td>TEAM 13</td><td>권서윤</td><td><code>4872</code></td></tr>
+<tr><td>TEAM 14</td><td>최예준</td><td><code>1819</code></td></tr>
+<tr><td>TEAM 14</td><td>강유진</td><td><code>0904</code></td></tr>
+<tr><td>TEAM 14</td><td>이하은</td><td><code>5465</code></td></tr>
+<tr><td>TEAM 14</td><td>이다은</td><td><code>8727</code></td></tr>
+<tr><td>TEAM 14</td><td>안건우</td><td><code>8128</code></td></tr>
+<tr><td>TEAM 14</td><td>박건우</td><td><code>3523</code></td></tr>
+<tr><td>TEAM 15</td><td>최시우</td><td><code>3501</code></td></tr>
+<tr><td>TEAM 15</td><td>권하준</td><td><code>8724</code></td></tr>
+<tr><td>TEAM 15</td><td>서하은</td><td><code>8906</code></td></tr>
+<tr><td>TEAM 15</td><td>정윤서</td><td><code>3627</code></td></tr>
+<tr><td>TEAM 15</td><td>황예준</td><td><code>0180</code></td></tr>
+<tr><td>TEAM 15</td><td>권유진</td><td><code>5966</code></td></tr>
+<tr><td>TEAM 16</td><td>황건우</td><td><code>9902</code></td></tr>
+<tr><td>TEAM 16</td><td>오하은</td><td><code>1545</code></td></tr>
+<tr><td>TEAM 16</td><td>권예준</td><td><code>8057</code></td></tr>
+<tr><td>TEAM 16</td><td>강수아</td><td><code>6781</code></td></tr>
+<tr><td>TEAM 16</td><td>박민준</td><td><code>1827</code></td></tr>
+<tr><td>TEAM 16</td><td>황지우</td><td><code>3548</code></td></tr>
+<tr><td>TEAM 17</td><td>한유진</td><td><code>5253</code></td></tr>
+<tr><td>TEAM 17</td><td>전지우</td><td><code>1890</code></td></tr>
+<tr><td>TEAM 17</td><td>권지우</td><td><code>3683</code></td></tr>
+<tr><td>TEAM 17</td><td>김지민</td><td><code>6761</code></td></tr>
+<tr><td>TEAM 17</td><td>강시우</td><td><code>6509</code></td></tr>
+<tr><td>TEAM 17</td><td>김수아</td><td><code>0061</code></td></tr>
+<tr><td>TEAM 18</td><td>최지호</td><td><code>2566</code></td></tr>
+<tr><td>TEAM 18</td><td>이민준</td><td><code>7482</code></td></tr>
+<tr><td>TEAM 18</td><td>윤채원</td><td><code>1180</code></td></tr>
+<tr><td>TEAM 18</td><td>윤서윤</td><td><code>3781</code></td></tr>
+<tr><td>TEAM 18</td><td>장민준</td><td><code>7746</code></td></tr>
+<tr><td>TEAM 18</td><td>최유준</td><td><code>3245</code></td></tr>
+<tr><td>TEAM 19</td><td>신도윤</td><td><code>5852</code></td></tr>
+<tr><td>TEAM 19</td><td>한지우</td><td><code>4183</code></td></tr>
+<tr><td>TEAM 19</td><td>홍지호</td><td><code>3042</code></td></tr>
+<tr><td>TEAM 19</td><td>안예준</td><td><code>6628</code></td></tr>
+<tr><td>TEAM 19</td><td>황시우</td><td><code>9348</code></td></tr>
+<tr><td>TEAM 19</td><td>전하은</td><td><code>4530</code></td></tr>
+<tr><td>TEAM 20</td><td>이유준</td><td><code>0379</code></td></tr>
+<tr><td>TEAM 20</td><td>최윤서</td><td><code>6542</code></td></tr>
+<tr><td>TEAM 20</td><td>김서연</td><td><code>8197</code></td></tr>
+<tr><td>TEAM 20</td><td>홍채원</td><td><code>3831</code></td></tr>
+<tr><td>TEAM 20</td><td>송하은</td><td><code>8261</code></td></tr>
+<tr><td>TEAM 20</td><td>박서윤</td><td><code>8709</code></td></tr>
+</tbody></table></section>
+<section class="demo-account-group"><h3>운영팀 투자자 <small>20명</small></h3><table><thead><tr><th scope="col">팀</th><th scope="col">이름</th><th scope="col">코드</th></tr></thead><tbody>
+<tr><td>운영팀</td><td>운영팀 이지민</td><td><code>8379</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 한건우</td><td><code>9089</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 전예준</td><td><code>5141</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 황하은</td><td><code>3445</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 강유준</td><td><code>3693</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 조하준</td><td><code>8113</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 강도윤</td><td><code>1359</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 신서윤</td><td><code>0796</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 안하준</td><td><code>5199</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 전서윤</td><td><code>1465</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 홍도윤</td><td><code>2401</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 권수아</td><td><code>9030</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 윤민준</td><td><code>8838</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 임유진</td><td><code>5696</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 김시우</td><td><code>2642</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 전윤서</td><td><code>7649</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 안수아</td><td><code>3177</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 안서연</td><td><code>6098</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 윤현우</td><td><code>1593</code></td></tr>
+<tr><td>운영팀</td><td>운영팀 서도윤</td><td><code>3713</code></td></tr>
+</tbody></table></section>
+</div></aside></body></html>
