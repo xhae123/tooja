@@ -1,7 +1,8 @@
 {
-  "qaImage": "sha256:56d6480324baba5d28a6b7625d771324f255c090f15cf458385b1e9e650cfeed",
-  "appImage": "sha256:c3e30c448e8b83be6474494ff7863f6295d3574c07b47ab06eb559de8a13fc02",
-  "qaJarSha256": "98627d3b401dcd962dd0b3f66ed04a0f03974fc4af4c65136ee09601fa331952",
+  "qaImage": "sha256:28250cc7f77b8eae44b714c1d6f5553770bf908cf6baec3ac54908365723fca6",
+  "appImage": "sha256:6f319a25ee3b5bb3586158940b984d133cac1bf5a1a8fcd836cf64ba7d240a09",
+  "qaJarSha256": "87306aa51c941de56ef042069022b09bbbf2462cf0ce123a033c70de1f4bed3b",
   "nodeVersion": "v24.4.1",
-  "composeVersion": "2.39.2-desktop.1"
+  "composeVersion": "2.39.2-desktop.1",
+  "e2eRetries": 0
 }

@@ -1,0 +1,8 @@
+[Unit]
+Description=Check whether certbot renewed the tooja certificate
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=300
+[Install]
+WantedBy=timers.target

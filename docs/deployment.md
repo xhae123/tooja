@@ -1,10 +1,10 @@
 # CI/CD와 프론트엔드 연동
 
-기존 OCI A1 인스턴스의 예약 공인 IP를 사용합니다. 현재 연결 주소는 `http://129.225.170.51`입니다.
+기존 OCI A1 인스턴스의 예약 공인 IP를 사용합니다. 현재 연결 주소는 `https://api.leafeep.com`입니다.
 
-- [API Swagger](http://129.225.170.51/api-docs)
-- [현재 배포의 Allure](http://129.225.170.51/reports/allure/): 단위·통합만 포함
-- [배포 커밋·CI 실행·테스트 건수](http://129.225.170.51/deployment.json)
+- [API Swagger](https://api.leafeep.com/api-docs)
+- [현재 배포의 Allure](https://api.leafeep.com/reports/allure/): 단위·통합만 포함
+- [배포 커밋·CI 실행·테스트 건수](https://api.leafeep.com/deployment.json)
 - [GitHub Actions](https://github.com/xhae123/tooja/actions)
 
 ## 배포 흐름
@@ -30,7 +30,7 @@ production 프로필의 수동 등록 모드는 재시작·재배포 때 데모�
 ```ts
 import { defineConfig } from 'vite';
 
-const api = 'http://129.225.170.51';
+const api = 'https://api.leafeep.com';
 export default defineConfig({
   server: {
     proxy: {
@@ -63,3 +63,9 @@ export default defineConfig({
 ## 이전 배포 산출물 삭제
 
 새 버전의 health·OpenAPI·Allure·커밋 검증에 성공하면 이전 tooja 이미지와 모든 이전 릴리스 디렉터리(JAR·배포 파일·리포트)를 삭제합니다. 현재 릴리스만 보존합니다. 빌드는 tooja-release 전용 builder에서 수행하고 성공 후 그 캐시를 비웁니다. nginx·certbot 이미지나 다른 builder 캐시는 자동 정리 대상이 아닙니다. DB와 배포 전 DB 백업은 보존합니다. 새 버전 검증 실패 전에는 이전 버전을 삭제하지 않으므로 실패 복구가 가능하지만, 성공 후 이전 커밋으로 돌아가려면 CI/CD를 통해 재배포해야 합니다.
+
+## HTTPS 연결
+
+주소는 https://api.leafeep.com이에요. 서버 runtime.env의 APP_ORIGIN은 이 주소, SECURE_COOKIES는 true로 설정해요. 배포 검증은 SSH 안에서 이 호스트를 loopback으로 resolve해 nginx와 TLS 인증서를 확인해요. 인증서 검증을 끄지 않아요.
+
+nginx HTTPS 설정과 certbot은 운영자가 한 번 연결해요. HTTP-01 인증서 경로만 해외에도 열고 앱·API는 한국 IP만 허용해요. certbot의 기존 갱신 작업과 별도 tooja-certificate-reload.timer가 인증서 변경 시 nginx 설정 검사 후 reload해요. 이 timer와 nginx 설정은 앱 CI/CD에서 재배포하지 않아요.

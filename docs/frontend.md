@@ -1,12 +1,12 @@
 # 프론트엔드 연동을 시작할 때 봐주세요
 
-서버 주소는 **http://129.225.170.51**이에요. API 경로는 `/api/v1`로 시작해요.
+서버 주소는 **https://api.leafeep.com**이에요. API 경로는 `/api/v1`로 시작해요.
 
 ## 먼저 여기부터 열어보세요
 
-- [테스트 화면·더미 계정](http://129.225.170.51/): 데스크톱 오른쪽에 팀·이름·코드가 있어요. 실제 API를 호출하는 임시 화면이라 화면 흐름도 확인할 수 있어요.
-- [API 문서](http://129.225.170.51/api-docs): 요청 값, 응답 필드, 오류가 나는 조건은 여기를 봐주세요.
-- [테스트 리포트](http://129.225.170.51/reports/allure/): 현재 배포의 단위·통합 테스트 결과예요. E2E는 포함하지 않아요.
+- [테스트 화면·더미 계정](https://api.leafeep.com/): 데스크톱 오른쪽에 팀·이름·코드가 있어요. 실제 API를 호출하는 임시 화면이라 화면 흐름도 확인할 수 있어요.
+- [API 문서](https://api.leafeep.com/api-docs): 요청 값, 응답 필드, 오류가 나는 조건은 여기를 봐주세요.
+- [테스트 리포트](https://api.leafeep.com/reports/allure/): 현재 배포의 단위·통합 테스트 결과예요. E2E는 포함하지 않아요.
 
 한국 IP에서만 접속할 수 있어요. 해외 VPN이나 해외에 둔 프록시 서버를 사용하면 `403`이 나올 수 있어요.
 
@@ -19,7 +19,7 @@ Vite를 쓰면 아래 설정을 넣으면 돼요.
 ```ts
 import { defineConfig } from 'vite';
 
-const api = 'http://129.225.170.51';
+const api = 'https://api.leafeep.com';
 
 export default defineConfig({
   server: {
@@ -30,6 +30,13 @@ export default defineConfig({
         configure(proxy) {
           proxy.on('proxyReq', (request) => {
             request.setHeader('Origin', api);
+          });
+          // 로컬 HTTP 개발 서버에서만 Secure를 제거해 쿠키를 전달해요.
+          // 운영 환경에서는 이 처리를 사용하지 마세요.
+          proxy.on('proxyRes', (response) => {
+            const cookies = response.headers['set-cookie'];
+            if (cookies) response.headers['set-cookie'] =
+              cookies.map((cookie) => cookie.replace(/;\s*Secure/gi, ''));
           });
         },
       },
@@ -55,10 +62,14 @@ export default defineConfig({
 
 ## 투자 확정에서 이것만 주의해 주세요
 
-팀 조회 응답의 `investmentState`와 `allowedAmounts`로 투자 가능 여부와 금액 버튼을 표시해 주세요. 확정한 투자는 취소하거나 바꿀 수 없어요.
+먼저 팀 조회 응답의 **`investmentStatus.status`**를 확인해 주세요. `PAUSED`면 투자 버튼을 비활성화하고 중지 안내를 보여주세요. 소개·잔액·내역 조회는 계속 가능해요. `RUNNING`이면 팀별 `investmentState`와 `allowedAmounts`로 투자 가능 여부와 금액 버튼을 표시해 주세요. 확정한 투자는 취소하거나 바꿀 수 없어요.
 
-투자 요청에는 `X-CSRF-Token` 외에 **`Idempotency-Key: UUID v4`**가 필요해요. 한 번의 투자에 키를 하나 만들고, 응답이 끊겼다면 새 키를 만들지 말고 **같은 키·같은 본문**으로 결과를 조회하거나 재전송해 주세요. 복구 순서는 [API 문서의 투자 확정·요청 결과 조회](http://129.225.170.51/api-docs)를 봐주세요.
+투자 요청에는 `X-CSRF-Token` 외에 **`Idempotency-Key: UUID v4`**가 필요해요. 한 번의 투자에 키를 하나 만들고, 응답이 끊겼다면 새 키를 만들지 말고 **같은 키·같은 본문**으로 결과를 조회하거나 재전송해 주세요. 복구 순서는 [API 문서의 투자 확정·요청 결과 조회](https://api.leafeep.com/api-docs)를 봐주세요.
 
-현재 서버는 HTTP라서 `crypto.randomUUID()`가 없을 수 있어요. 필요한 경우 [임시 화면의 `investmentRequestKey()`](../src/main/resources/static/app.js)를 참고해 주세요. HTTP에서도 사용할 수 있는 `crypto.getRandomValues()`로 키를 만들어요.
+현재 서버는 HTTPS라서 `crypto.randomUUID()`를 사용할 수 있어요. HTTP 개발 환경에서 이 함수가 없으면 필요한 경우 [임시 화면의 `investmentRequestKey()`](../src/main/resources/static/app.js)를 참고해 주세요. HTTP에서도 사용할 수 있는 `crypto.getRandomValues()`로 키를 만들어요.
 
-오류는 HTTP 상태와 `error.code`로 구분하고, `error.message`를 안내에 사용해 주세요. `429`에 `Retry-After`가 있으면 그 시간 동안 기다렸다가 다시 요청해 주세요. API별 상세 조건은 [API 문서](http://129.225.170.51/api-docs)에 있어요.
+오류는 HTTP 상태와 `error.code`로 구분하고, `error.message`를 안내에 사용해 주세요. `429`에 `Retry-After`가 있으면 그 시간 동안 기다렸다가 다시 요청해 주세요. API별 상세 조건은 [API 문서](https://api.leafeep.com/api-docs)에 있어요.
+
+관리자는 `PATCH /api/v1/admin/investment-status`에 `{"status":"PAUSED"}`로 중지하고, `{"status":"RUNNING"}`으로 재개해요. 관리자 현황에도 상태가 포함돼요. 로그인 없이 상태만 확인하려면 `GET /api/v1/public/investment-status`를 사용하세요.
+
+화면을 연 뒤 관리자가 중지할 수도 있으니 확정 응답의 `409 INVESTMENT_PAUSED`도 처리해 주세요. 이 오류는 요청 키를 소비하지 않아요. 재개 후 같은 키·본문으로 다시 시도할 수 있고, 이미 성공한 요청을 중지 중에 재전송하면 기존 영수증을 받아요.

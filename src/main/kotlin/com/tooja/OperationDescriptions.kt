@@ -2,6 +2,9 @@ package com.tooja
 
 /** Controller annotations reference these constants; descriptions travel with generated OpenAPI. */
 object OperationDescriptions {
+    const val GET_INVESTMENT_STATUS = """**사용 시점**: 로그인 없이 지금 투자를 접수하는지 확인해요. RUNNING이면 신규 투자를 접수하고, PAUSED이면 신규 투자를 거절해요. revision은 실제 상태 변경 때만 증가하고 updatedAt은 마지막 변경 시각이에요. **성공 결과**: 최초 상태는 RUNNING, revision=0, updatedAt=null이에요. 서버를 다시 시작해도 저장된 상태가 유지돼요."""
+    const val UPDATE_INVESTMENT_STATUS = """**사용 시점**: 관리자만 전체 투자를 중지하거나 재개할 수 있어요. 중지는 {"status":"PAUSED"}, 재개는 {"status":"RUNNING"}을 보내주세요. 관리자 세션과 해당 세션의 X-CSRF-Token, 허용 Origin이 필요해요. **성공 결과**: 이미 같은 상태면 변경 없이 같은 revision과 updatedAt을 반환해요. 중지 응답이 성공한 뒤 들어온 신규 투자는 409 INVESTMENT_PAUSED예요. 중지와 동시에 들어와 먼저 확정된 투자는 유지돼요. 로그인, 최초 지급, 잔액·내역·순위 조회는 계속 가능하고 이전 성공 요청의 재전송은 기존 영수증을 반환해요. 중지로 거절된 요청 키는 소비하지 않으므로 재개 후 같은 키·본문으로 다시 시도할 수 있어요. 잔액과 거래·순위 버전을 변경하지 않아요."""
+
     const val INVESTOR_CSRF = """**사용 시점**: 투자자 로그인 화면을 열었을 때 먼저 호출합니다. 로그인하지 않은 브라우저도 호출할 수 있습니다.
 
 **호출 순서**: 이 응답의 `csrfToken`을 보관한 뒤 투자자 로그인·로그아웃 요청의 `X-CSRF-Token` 헤더에 넣으세요. 서버가 함께 내려주는 HttpOnly 쿠키는 브라우저가 보관하고 다음 요청에 보내야 합니다.
@@ -51,17 +54,23 @@ object OperationDescriptions {
 **성공 결과**: 로그인한 본인의 `Investor`를 반환합니다. `kind=PARTICIPANT`는 참가자이며 `teamId`가 소속팀입니다. `kind=STAFF`는 운영팀 투자자이며 소속팀은 null입니다. 로그인 코드는 반환하지 않습니다.
 
 `issuedAmount`는 최초 지급액, `investedAmount`는 확정 투자 합계, `balance`는 현재 잔액입니다. `UNSPENT`는 잔액이 남음, `COMPLETED`는 전액 소진을 뜻합니다. 조회만으로 지급·차감·세션 연장을 수행하지 않습니다."""
-    const val LIST_TEAMS = """**사용 시점**: 투자자 부스 목록 화면을 열거나 투자 후 목록을 갱신할 때 호출합니다.
+    const val LIST_TEAMS = """
+**전체 접수 상태**: investmentStatus.status가 PAUSED면 소개 조회는 가능하지만 투자 버튼을 비활성화해요. RUNNING일 때 팀별 investmentState와 allowedAmounts를 함께 확인하세요.
+**사용 시점**: 투자자 부스 목록 화면을 열거나 투자 후 목록을 갱신할 때 호출합니다.
 
 **성공 결과**: 현재 투자자 정보와 팀 번호 오름차순의 20개 팀을 반환합니다. 자기 팀·이미 투자한 팀도 목록에서 제외하지 않습니다. 팀 소개와 본인 투자 금액만 제공하며 다른 투자자의 투자 정보·팀 전체 유치액·순위는 포함하지 않습니다.
 
 **화면 처리**: `investmentState`가 `SELF_TEAM`이면 자기 팀, `ALREADY_INVESTED`이면 투자 완료, `BALANCE_EXHAUSTED`이면 잔액 소진, `AVAILABLE`이면 투자 가능으로 표시하세요. 이 순서로 상태를 판정합니다. `allowedAmounts`는 현재 잔액으로 선택할 수 있는 금액 목록이며 투자 불가 상태는 빈 배열입니다. 서버의 상태·금액 목록을 사용하되 최종 투자 시 서버가 다시 검증합니다."""
-    const val GET_TEAM = """**사용 시점**: 부스 목록에서 한 팀을 선택해 소개·금액 선택 화면을 열 때 호출합니다. `teamId`는 목록에서 받은 정수 팀 번호입니다.
+    const val GET_TEAM = """
+**전체 접수 상태**: investmentStatus.status가 PAUSED면 소개 조회는 가능하지만 투자 버튼을 비활성화해요. 상태가 화면 로드 이후 바뀌어도 서버가 확정 시 다시 검사해요.
+**사용 시점**: 부스 목록에서 한 팀을 선택해 소개·금액 선택 화면을 열 때 호출합니다. `teamId`는 목록에서 받은 정수 팀 번호입니다.
 
 **성공 결과**: 최신 투자자 잔액과 해당 팀의 소개, 본인 투자 금액, `investmentState`, `allowedAmounts`를 반환합니다. 자기 팀·이미 투자한 팀도 조회는 가능하며 투자 불가 상태로 응답합니다.
 
 **화면 처리**: 10만~70만원의 7개 금액 버튼을 표시하고 `allowedAmounts`에 없는 값은 비활성화하세요. 상태가 `AVAILABLE`일 때만 투자 버튼을 활성화합니다. 이 조회와 투자 확정 사이에 다른 기기에서 투자하면 실제 잔액이 바뀔 수 있으므로 투자 오류 후 다시 조회하세요. 정수로 해석할 수 없는 경로값은 422, 존재하지 않는 팀 번호는 404입니다."""
-    const val CREATE_INVESTMENT = """**사용 시점**: 금액 선택·확인 후 사용자가 최종 투자 버튼을 눌렀을 때 호출합니다. 확정 거래는 취소·수정할 수 없습니다.
+    const val CREATE_INVESTMENT = """
+**중지 중 처리**: 신규 요청은 409 INVESTMENT_PAUSED이며 요청 키를 소비하지 않아요. 재개 후 같은 키·본문으로 다시 시도할 수 있어요. 이미 커밋된 같은 키·본문은 중지 중에도 원래 결과를 반환해요.
+**사용 시점**: 금액 선택·확인 후 사용자가 최종 투자 버튼을 눌렀을 때 호출합니다. 확정 거래는 취소·수정할 수 없습니다.
 
 **입력**: 본문은 `{"teamId":2,"amount":100000}` 형태입니다. 팀 번호는 1~20, 금액은 100000~700000 사이의 정수이며 100000의 배수여야 합니다. `Idempotency-Key` 헤더에는 이번 투자에 사용할 UUID v4를 새로 생성해 보내고, 투자자 `X-CSRF-Token`도 보내세요.
 
@@ -91,7 +100,7 @@ object OperationDescriptions {
 
 **수치 해석**: `activatedInvestorCount`는 최초 로그인하여 지급받은 인원, `investedInvestorCount`는 1회 이상 투자한 인원입니다. `unspentCount`는 지급받았고 잔액이 남은 인원, `completedCount`는 지급받고 전액 사용한 인원입니다. 미지급자와 전액 소진자의 잔액은 둘 다 0원이므로 잔액만으로 분류하지 마세요.
 
-모든 수치는 같은 조회 스냅샷이며 `asOf`가 조회 시각입니다. 시작·마감·자동 감점·최종 결과 고정은 수행하지 않습니다. 필요할 때 관리자가 화면을 캡처해 기록합니다."""
+모든 수치는 같은 조회 스냅샷이며 `asOf`가 조회 시각입니다. investmentStatus로 전체 투자 접수 상태를 함께 확인해요. 관리자는 중지·재개할 수 있으며 자동 감점·최종 결과 고정은 수행하지 않습니다. 필요할 때 관리자가 화면을 캡처해 기록합니다."""
     const val LIST_INVESTORS = """**사용 시점**: 관리자 투자자 목록에서 검색·필터링하거나 미소진자·미지급자를 확인할 때 호출합니다. 네 필터를 모두 생략하면 전체 투자자를 반환합니다.
 
 **필터**: `q`는 별칭 또는 내부 투자자 ID의 부분 검색(대소문자 무시, 최대 100자)입니다. `teamId`는 참가자 소속팀 1~20, `kind`는 PARTICIPANT 또는 STAFF입니다. `spendingStatus=UNSPENT`는 지급 후 잔액이 남은 사람, `NOT_ACTIVATED`는 미로그인·미지급자, `COMPLETED`는 지급 후 전액 사용한 사람입니다.
@@ -113,5 +122,5 @@ object OperationDescriptions {
 
 **성공 결과**: 투자금 내림차순으로 정렬한 20개 팀, 전체 확정 투자금, 1회 이상 투자한 인원, snapshotVersion, asOf를 반환합니다. 투자금이 없는 팀도 포함합니다. 공동 순위는 경쟁 순위 방식(1, 1, 3)이며 동률 팀은 팀 번호 순입니다. 전부 0원이면 모두 1위입니다. 화면 배열 인덱스 대신 응답의 rank를 표시하세요.
 
-**갱신 처리**: 화면은 주기적으로 이 API를 호출합니다. snapshotVersion은 투자 확정 때 증가하므로 같은 버전이면 순위 변동 애니메이션을 반복하지 않아도 됩니다. asOf는 조회 시각이며 최종 마감 시각이 아닙니다. 응답은 개인별 정보·로그인 코드를 포함하지 않습니다. 429면 Retry-After(초) 이후 재시도하세요. 시작·마감이나 결과 동결 기능은 없습니다."""
+**갱신 처리**: 화면은 주기적으로 이 API를 호출합니다. snapshotVersion은 투자 확정 때 증가하므로 같은 버전이면 순위 변동 애니메이션을 반복하지 않아도 됩니다. asOf는 조회 시각이며 최종 마감 시각이 아닙니다. 응답은 개인별 정보·로그인 코드를 포함하지 않습니다. 429면 Retry-After(초) 이후 재시도하세요. 전체 투자 중지·재개는 별도 investment-status API를 사용해요. 결과 동결 기능은 없습니다."""
 }

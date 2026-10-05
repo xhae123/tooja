@@ -17,3 +17,5 @@ __pycache__/
 # Local database operation records and credentials
 .local/
 reports/ci-allure/
+
+.kotlin/

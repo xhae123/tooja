@@ -1,335 +1,377 @@
 {
-  "generatedAt": "2026-10-05T11:01:38.090Z",
-  "reportHash": "e4d1df4f0048f0848900b709e9f4c3f2c3bdff0879279e38efe316482429c962",
+  "generatedAt": "2026-10-05T15:03:11.294Z",
+  "reportHash": "4e3fb74359c1334dbadffcdc8edd9cb8dcbd2c3417cf27f075d8eb90daeaff3b",
   "cases": [
     {
       "id": "P01-01",
       "title": "P01-01 · 입력 전 로그인 비활성 / 팀 선택 제거",
       "screen": "P01",
       "status": "passed",
-      "durationMs": 3407
+      "durationMs": 1542
     },
     {
       "id": "P01-02",
       "title": "P01-02 · 잘못된 코드 안내 / 돈 미지급",
       "screen": "P01",
       "status": "passed",
-      "durationMs": 1553
+      "durationMs": 901
     },
     {
       "id": "P01-03",
       "title": "P01-03 · localStorage 한도 도달 시 API 전송 없음",
       "screen": "P01",
       "status": "passed",
-      "durationMs": 861
+      "durationMs": 699
     },
     {
       "id": "P01-04",
       "title": "P01-04 · 로그인 전 CSRF 준비 실패가 화면에 표시된다",
       "screen": "P01",
       "status": "passed",
-      "durationMs": 619
+      "durationMs": 597
     },
     {
       "id": "P02-01",
       "title": "P02-01 · 최초 로그인 지급 / 20개 카드 / 참가자 안내",
       "screen": "P02",
       "status": "passed",
-      "durationMs": 968
+      "durationMs": 951
     },
     {
       "id": "P02-02",
       "title": "P02-02 · 운영팀은 모든 팀 투자 가능 / 감점 문구 없음",
       "screen": "P02",
       "status": "passed",
-      "durationMs": 781
+      "durationMs": 708
     },
     {
       "id": "P02-03",
       "title": "P02-03 · 로그인·새로고침·로그아웃 후 잔액 유지",
       "screen": "P02",
       "status": "passed",
-      "durationMs": 2046
+      "durationMs": 1819
     },
     {
       "id": "P03-01",
       "title": "P03-01 · 7개 금액 / 기본 선택 없음 / 잔액 미리보기",
       "screen": "P03",
       "status": "passed",
-      "durationMs": 1002
+      "durationMs": 716
     },
     {
       "id": "P03-02",
       "title": "P03-02 · 본인 팀 진입과 직접 API 모두 거절",
       "screen": "P03",
       "status": "passed",
-      "durationMs": 1196
+      "durationMs": 936
     },
     {
       "id": "P03-03",
       "title": "P03-03 · 이미 투자한 팀 조회와 직접 API 재투자 거절",
       "screen": "P03",
       "status": "passed",
-      "durationMs": 984
+      "durationMs": 1062
     },
     {
       "id": "P03-04",
       "title": "P03-04 · 잔액 30만원이면 40~70만원 비활성",
       "screen": "P03",
       "status": "passed",
-      "durationMs": 1624
+      "durationMs": 1020
     },
     {
       "id": "P03-05",
       "title": "P03-05 · 잔액 0원이어도 부스 소개 열람",
       "screen": "P03",
       "status": "passed",
-      "durationMs": 1681
+      "durationMs": 1174
     },
     {
       "id": "P03-06",
       "title": "P03-06 · 없는 팀은 404 안내",
       "screen": "P03",
       "status": "passed",
-      "durationMs": 1714
+      "durationMs": 631
     },
     {
       "id": "P03-M-01",
       "title": "P03-M-01 · 확인 모달 요약 / 돌아가기는 투자 아님 / 포커스 복귀",
       "screen": "P03-M",
       "status": "passed",
-      "durationMs": 836
+      "durationMs": 795
     },
     {
       "id": "P03-M-02",
       "title": "P03-M-02 · 전송 중 두 버튼 잠금 / 실제 거래 한 건",
       "screen": "P03-M",
       "status": "passed",
-      "durationMs": 2035
+      "durationMs": 2158
     },
     {
       "id": "P03-M-03",
       "title": "P03-M-03 · 응답 끊김 후 같은 키로 성공 복구",
       "screen": "P03-M",
       "status": "passed",
-      "durationMs": 1934
+      "durationMs": 2165
     },
     {
       "id": "P03-M-04",
       "title": "P03-M-04 · 동시 기기 투자로 잔액 변경 → 거절·모달 닫기·선택 초기화",
       "screen": "P03-M",
       "status": "passed",
-      "durationMs": 659
+      "durationMs": 1035
     },
     {
       "id": "P03-M-05",
       "title": "P03-M-05 · 미도착 요청은 같은 키·본문으로 재전송",
       "screen": "P03-M",
       "status": "passed",
-      "durationMs": 1991
+      "durationMs": 2077
     },
     {
       "id": "P03-M-06",
       "title": "P03-M-06 · 응답 대기 중 새로고침 후 저장된 키로 성공 복구",
       "screen": "P03-M",
       "status": "passed",
-      "durationMs": 854
+      "durationMs": 1019
     },
     {
       "id": "P03-M-07",
       "title": "P03-M-07 · 키보드 Escape로 전송 전 모달 닫기",
       "screen": "P03-M",
       "status": "passed",
-      "durationMs": 627
+      "durationMs": 844
     },
     {
       "id": "P04-01",
       "title": "P04-01 · 투자 완료에 팀·금액·현재 잔액 표시",
       "screen": "P04",
       "status": "passed",
-      "durationMs": 688
+      "durationMs": 1132
     },
     {
       "id": "P04-02",
       "title": "P04-02 · 전액 완료 / 홈으로 / 과거 거래도 현재 잔액 표시",
       "screen": "P04",
       "status": "passed",
-      "durationMs": 841
+      "durationMs": 1350
     },
     {
       "id": "P04-03",
       "title": "P04-03 · 다른 투자자 거래는 404",
       "screen": "P04",
       "status": "passed",
-      "durationMs": 1010
+      "durationMs": 1264
     },
     {
       "id": "P05-01",
       "title": "P05-01 · 내역 없는 빈 상태",
       "screen": "P05",
       "status": "passed",
-      "durationMs": 649
+      "durationMs": 628
     },
     {
       "id": "P05-02",
       "title": "P05-02 · 최신순 두 건 / 금액 합계 / 취소 버튼 없음",
       "screen": "P05",
       "status": "passed",
-      "durationMs": 1012
+      "durationMs": 1433
     },
     {
       "id": "A01-01",
       "title": "A01-01 · 관리자 입력 전 / 실패 안내",
       "screen": "A01",
       "status": "passed",
-      "durationMs": 465
+      "durationMs": 707
     },
     {
       "id": "A01-02",
       "title": "A01-02 · 투자자만 로그인한 관리자 접근은 403",
       "screen": "A01",
       "status": "passed",
-      "durationMs": 545
+      "durationMs": 620
     },
     {
       "id": "A02-01",
       "title": "A02-01 · 미로그인 포함 등록 / 관리자 지급 제외 / 역할별 집계",
       "screen": "A02",
       "status": "passed",
-      "durationMs": 556
+      "durationMs": 925
     },
     {
       "id": "A02-02",
       "title": "A02-02 · 같은 브라우저 두 역할 로그인 / 한쪽 로그아웃 유지",
       "screen": "A02",
       "status": "passed",
-      "durationMs": 746
+      "durationMs": 1101
     },
     {
       "id": "A02-03",
       "title": "A02-03 · 미소진 바로가기에서 필터 적용",
       "screen": "A02",
       "status": "passed",
-      "durationMs": 873
+      "durationMs": 1339
     },
     {
       "id": "A03-01",
       "title": "A03-01 · 미로그인·미소진·완료 필터와 빈 목록",
       "screen": "A03",
       "status": "passed",
-      "durationMs": 955
+      "durationMs": 1126
     },
     {
       "id": "A03-02",
       "title": "A03-02 · 별칭·ID 검색 / 역할·팀 AND / 자동 갱신 필터 유지",
       "screen": "A03",
       "status": "passed",
-      "durationMs": 3088
+      "durationMs": 3001
     },
     {
       "id": "A04-01",
       "title": "A04-01 · 투자자 상세 / 거래 두 건 / 별칭 수정",
       "screen": "A04",
       "status": "passed",
-      "durationMs": 3289
+      "durationMs": 2221
     },
     {
       "id": "A04-02",
       "title": "A04-02 · 잘못된 별칭은 저장하지 않는다",
       "screen": "A04",
       "status": "passed",
-      "durationMs": 1485
+      "durationMs": 2702
     },
     {
       "id": "D01-01",
       "title": "D01-01 · 공개 20개 팀 / 모두 0원 공동1위 / 개인정보 없음",
       "screen": "D01",
       "status": "passed",
-      "durationMs": 495
+      "durationMs": 704
     },
     {
       "id": "D01-02",
       "title": "D01-02 · 다른 기기 투자 → 2초 내 순위 갱신 / 1·1·3",
       "screen": "D01",
       "status": "passed",
-      "durationMs": 2623
+      "durationMs": 3098
     },
     {
       "id": "D01-03",
       "title": "D01-03 · 투자 커밋 응답부터 2초 이내 자동 갱신",
       "screen": "D01",
       "status": "passed",
-      "durationMs": 1460
+      "durationMs": 1560
     },
     {
       "id": "D01-04",
       "title": "D01-04 · 연결 끊김은 마지막 수치 유지 / 복구 후 갱신",
       "screen": "D01",
       "status": "passed",
-      "durationMs": 9704
+      "durationMs": 9889
     },
     {
       "id": "D01-05",
       "title": "D01-05 · 전체화면 거부 시 일반 화면 유지 / reduced-motion",
       "screen": "D01",
       "status": "passed",
-      "durationMs": 433
+      "durationMs": 1352
     },
     {
       "id": "SESSION-01",
       "title": "SESSION-01 · 세션 만료 시 로그인으로 이동 / 재지급 없음",
       "screen": "P01",
       "status": "passed",
-      "durationMs": 769
+      "durationMs": 1237
     },
     {
       "id": "PERSIST-01",
       "title": "PERSIST-01 · 실제 컨테이너 재시작 후 세션·원장 유지",
       "screen": "P02",
       "status": "passed",
-      "durationMs": 5892
+      "durationMs": 14271
     },
     {
       "id": "P01-05",
       "title": "P01-05 · 3자리·문자 입력은 로그인 비활성 / 4자리 앞자리0 유지",
       "screen": "P01",
       "status": "passed",
-      "durationMs": 478
+      "durationMs": 1941
     },
     {
       "id": "A01-03",
       "title": "A01-03 · 관리자 로그인 한도는 투자자 기록과 별개",
       "screen": "A01",
       "status": "passed",
-      "durationMs": 1215
+      "durationMs": 1289
     },
     {
       "id": "P03-M-08",
       "title": "P03-M-08 · 미도착 요청이 저장된 홈 재진입에서도 같은 키로 복구",
       "screen": "P03-M",
       "status": "passed",
-      "durationMs": 893
+      "durationMs": 1307
     },
     {
       "id": "D01-06",
       "title": "D01-06 · 429 Retry-After 동안 추가 조회를 보내지 않는다",
       "screen": "D01",
       "status": "passed",
-      "durationMs": 4204
+      "durationMs": 4334
     },
     {
       "id": "D01-07",
       "title": "D01-07 · 같은 버전 재조회는 증가 효과·행 이동을 반복하지 않는다",
       "screen": "D01",
       "status": "passed",
-      "durationMs": 2309
+      "durationMs": 6654
     },
     {
       "id": "A02-04",
       "title": "A02-04 · 다른 기기 투자 후 관리자 현황·미소진 목록 자동 반영",
       "screen": "A02",
       "status": "passed",
-      "durationMs": 2705
+      "durationMs": 6579
+    },
+    {
+      "id": "P03-M-09",
+      "title": "P03-M-09 · HTTP에서 randomUUID가 없어도 투자 확정·단일 차감",
+      "screen": "P03-M",
+      "status": "passed",
+      "durationMs": 1521
+    },
+    {
+      "id": "P03-M-10",
+      "title": "P03-M-10 · 저장소 실패는 미전송 안내·버튼 잠금 해제",
+      "screen": "P03-M",
+      "status": "passed",
+      "durationMs": 951
+    },
+    {
+      "id": "A02-05",
+      "title": "A02-05 · 관리자 중지 후 투자자 화면 차단, 재개 후 투자 성공",
+      "screen": "A02",
+      "status": "passed",
+      "durationMs": 1637
+    },
+    {
+      "id": "P03-M-11",
+      "title": "P03-M-11 · 확인 창을 연 뒤 중지하면 서버가 확정을 거절한다",
+      "screen": "P03",
+      "status": "passed",
+      "durationMs": 1186
+    },
+    {
+      "id": "P03-06",
+      "title": "P03-06 · 중지 거절 키는 재개 후 사용하고 성공 영수증은 중지 중 복구한다",
+      "screen": "P03",
+      "status": "passed",
+      "durationMs": 1164
+    },
+    {
+      "id": "A02-06",
+      "title": "A02-06 · 실제 서버 재시작 후에도 중지와 로그인 세션을 유지한다",
+      "screen": "A02",
+      "status": "passed",
+      "durationMs": 10091
     }
   ]
 }

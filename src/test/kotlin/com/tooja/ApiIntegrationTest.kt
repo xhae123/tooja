@@ -138,5 +138,151 @@ class ApiIntegrationTest {
     @Test @DisplayName("투자 요청 키 누락·잘못된 UUID는 입력 오류이고 잔액 불변이다") fun badRequestKey() { login();failure(call("POST","/api/v1/investor/investments","{\"teamId\":2,\"amount\":100000}"),422,"VALIDATION_FAILED");failure(invest(2,100000,"not-a-uuid"),422,"VALIDATION_FAILED");assertThat(service.investor("inv_001").balance).isEqualTo(1000000) }
     @Test @DisplayName("없는 경로는 404, 허용하지 않는 메서드는 405다") fun routingErrors() { failure(call("GET","/api/v1/not-found"),404,"RESOURCE_NOT_FOUND");failure(call("PUT","/api/v1/investor/session","{}"),405,"METHOD_NOT_ALLOWED") }
     @Test @DisplayName("존재하지 않는 투자자 상세·별칭 수정은 404다") fun unknownInvestor() { login("admin","4821");failure(call("GET","/api/v1/admin/investors/missing"),404,"RESOURCE_NOT_FOUND");failure(call("PATCH","/api/v1/admin/investors/missing","{\"alias\":\"별칭\"}"),404,"RESOURCE_NOT_FOUND") }
-    @Test @DisplayName("컨트롤러에서 생성된 OpenAPI는 합의된 20개 작업과 오류를 담는다") fun generatedSpec() { val r=call("GET","/v3/api-docs");assertThat(r.status).isEqualTo(200);val d=json(r);val paths=d["paths"];assertThat(paths.fields().asSequence().sumOf{it.value.size()}).isEqualTo(20);assertThat(paths["/api/v1/investor/investments"]["post"]["responses"]["409"]["content"]["application/json"]["examples"]["ALREADY_INVESTED"]).isNotNull();assertThat(d["components"]["schemas"]["ApiError"]).isNotNull();assertThat(paths.toString()).doesNotContain("/__test","/event");paths.fields().forEachRemaining { path -> path.value.fields().forEachRemaining { operation -> assertThat(operation.value["description"].asText()).contains("**사용 시점**", "**성공 결과").hasSizeGreaterThan(200) } } }
+    @Test @DisplayName("컨트롤러에서 생성된 OpenAPI는 합의된 22개 작업과 오류를 담는다") fun generatedSpec() { val r=call("GET","/v3/api-docs");assertThat(r.status).isEqualTo(200);val d=json(r);val paths=d["paths"];assertThat(paths.fields().asSequence().sumOf{it.value.size()}).isEqualTo(22);assertThat(paths["/api/v1/investor/investments"]["post"]["responses"]["409"]["content"]["application/json"]["examples"]["ALREADY_INVESTED"]).isNotNull();assertThat(d["components"]["schemas"]["ApiError"]).isNotNull();assertThat(paths.toString()).doesNotContain("/__test","/event");paths.fields().forEachRemaining { path -> path.value.fields().forEachRemaining { operation -> assertThat(operation.value["description"].asText()).contains("**사용 시점**", "**성공 결과").hasSizeGreaterThan(200) } } }
+    private fun setMode(mode: String)=call("PATCH","/api/v1/admin/investment-status","{\"status\":\"$mode\"}")
+    private fun unchangedMoney() {
+        assertThat(service.investor("inv_001").balance).isEqualTo(1000000)
+        assertThat(service.history("inv_001").count).isZero()
+        assertThat(service.dashboard().snapshotVersion).isZero()
+        assertThat(db.jdbc.queryForObject("SELECT COUNT(*) FROM requests",Int::class.java)).isZero()
+    }
+    @Test @DisplayName("초기 접수는 실행 중이며 로그인 없이 상태를 확인한다") fun initialControl() {
+        val r=Steps.step("When 로그인하지 않고 투자 접수 상태 조회") { call("GET","/api/v1/public/investment-status") }
+        Steps.step("Then RUNNING, 변경 버전 0, 마지막 변경 시각 null") {
+            assertThat(r.status).isEqualTo(200);assertThat(json(r)["status"].asText()).isEqualTo("RUNNING")
+            assertThat(json(r)["revision"].asLong()).isZero();assertThat(json(r)["updatedAt"].isNull).isTrue()
+        }
+    }
+    @Test @DisplayName("중지·같은 상태 재전송·재개를 반복해도 실제 변경만 기록한다") fun controlTransitions() {
+        Steps.step("Given 관리자와 투자자가 동시에 로그인") { login();login("admin","4821") }
+        val before=service.overview().total
+        val pause=Steps.step("When 관리자가 투자를 중지") { setMode("PAUSED") };assertThat(pause.status).isEqualTo(200)
+        Steps.step("Then PAUSED, revision 1, 변경 시각 기록; 반복 요청은 동일 결과") {
+            assertThat(json(pause)["status"].asText()).isEqualTo("PAUSED");assertThat(json(pause)["revision"].asLong()).isEqualTo(1)
+            assertThat(json(pause)["updatedAt"].asText()).isEqualTo(clock.instant().toString())
+            (clock as MutableClock).current=clock.instant().plusSeconds(10)
+            assertThat(json(setMode("PAUSED"))).isEqualTo(json(pause))
+        }
+        Steps.step("When 재개하고 다시 중지·재개") { setMode("RUNNING");setMode("PAUSED");setMode("RUNNING") }
+        Steps.step("Then 실제 변경 4회, 잔액·지급·순위 버전 불변") {
+            assertThat(service.investmentStatus().revision).isEqualTo(4);assertThat(service.overview().total).isEqualTo(before);unchangedMoney()
+        }
+    }
+    @ParameterizedTest(name="{0} 투자자도 전체 중지 중에는 투자 불가") @ValueSource(strings=["0037","1000"])
+    fun pausedForBothKinds(code: String) {
+        Steps.step("Given 투자자 로그인 후 관리자 중지") { login(code=code);login("admin","4821");setMode("PAUSED") }
+        val r=Steps.step("When 새 요청 키로 10만원 투자") { invest(2,100000) }
+        failure(r,409,"INVESTMENT_PAUSED")
+        Steps.step("Then 차감·원장·요청 결과·순위 버전 모두 불변") {
+            val id=if(code=="0037")"inv_001" else "staff_001"
+            assertThat(service.investor(id).balance).isEqualTo(1000000);assertThat(service.history(id).count).isZero()
+            assertThat(db.jdbc.queryForObject("SELECT COUNT(*) FROM requests",Int::class.java)).isZero();assertThat(service.dashboard().snapshotVersion).isZero()
+        }
+    }
+    @Test @DisplayName("중지 거절은 키를 소비하지 않아 재개 후 같은 요청으로 투자한다") fun resumeSameKey() {
+        login();login("admin","4821");setMode("PAUSED");val key=UUID.randomUUID().toString()
+        Steps.step("When 중지 중 투자") { failure(invest(2,700000,key),409,"INVESTMENT_PAUSED") }
+        failure(call("GET","/api/v1/investor/investment-requests/$key"),404,"REQUEST_RESULT_NOT_FOUND")
+        Steps.step("When 재개 후 같은 키·본문 재전송") { setMode("RUNNING");assertThat(invest(2,700000,key).status).isEqualTo(201) }
+        Steps.step("Then 거래 1건·차감 1회·지급 1회") {
+            assertThat(service.investor("inv_001").balance).isEqualTo(300000);assertThat(service.history("inv_001").count).isEqualTo(1)
+            assertThat(db.jdbc.queryForObject("SELECT COUNT(*) FROM grants",Int::class.java)).isEqualTo(1)
+        }
+    }
+    @Test @DisplayName("이미 성공한 투자는 중지 중에도 원래 영수증을 복구한다") fun pausedSuccessReplay() {
+        login();val key=UUID.randomUUID().toString();val original=invest(2,700000,key);login("admin","4821");setMode("PAUSED")
+        val replay=Steps.step("When 중지 중 같은 키·본문 재전송") { invest(2,700000,key) }
+        Steps.step("Then 동일 영수증 201, 추가 차감 없음, 결과 조회 가능") {
+            assertThat(replay.status).isEqualTo(201);assertThat(json(replay)).isEqualTo(json(original))
+            assertThat(json(call("GET","/api/v1/investor/investment-requests/$key"))["status"].asText()).isEqualTo("SUCCEEDED")
+            assertThat(service.investor("inv_001").balance).isEqualTo(300000);assertThat(service.history("inv_001").count).isEqualTo(1)
+        }
+        failure(invest(3,700000,key),409,"IDEMPOTENCY_KEY_REUSED")
+    }
+    @Test @DisplayName("이미 확정된 거절은 중지 중에도 같은 결과를 돌려준다") fun pausedRejectedReplay() {
+        login();val key=UUID.randomUUID().toString();failure(invest(1,100000,key),403,"SELF_INVESTMENT_FORBIDDEN");login("admin","4821");setMode("PAUSED")
+        Steps.step("When 중지 중 기존 거절 키 재전송") { failure(invest(1,100000,key),403,"SELF_INVESTMENT_FORBIDDEN") }
+        Steps.step("Then 저장된 거절 유지, 새로운 키는 중지 오류 우선") {
+            failure(invest(1,100000),409,"INVESTMENT_PAUSED")
+            assertThat(db.jdbc.queryForObject("SELECT COUNT(*) FROM requests",Int::class.java)).isEqualTo(1)
+        }
+    }
+    @Test @DisplayName("중지 중에도 최초 로그인·지급·조회·별칭 수정은 가능하다") fun pausedReadAndLogin() {
+        login("admin","4821");setMode("PAUSED")
+        val first=Steps.step("When 중지 중 투자자가 최초 로그인") { login() }
+        Steps.step("Then 최초 100만원 지급, 조회 API 정상, 응답에서 PAUSED 확인") {
+            assertThat(first["investor"]["balance"].asInt()).isEqualTo(1000000)
+            for(path in listOf("/api/v1/investor/teams","/api/v1/investor/teams/2","/api/v1/investor/investments","/api/v1/admin/overview","/api/v1/admin/investors","/api/v1/public/dashboard")) assertThat(call("GET",path).status).isEqualTo(200)
+            assertThat(json(call("GET","/api/v1/investor/teams"))["investmentStatus"]["status"].asText()).isEqualTo("PAUSED")
+            assertThat(json(call("GET","/api/v1/investor/teams/2"))["investmentStatus"]["status"].asText()).isEqualTo("PAUSED")
+            assertThat(json(call("GET","/api/v1/admin/overview"))["investmentStatus"]["status"].asText()).isEqualTo("PAUSED")
+            assertThat(call("PATCH","/api/v1/admin/investors/inv_001","{\"alias\":\"중지 중 수정\"}").status).isEqualTo(200)
+            unchangedMoney()
+        }
+    }
+    @ParameterizedTest(name="{0}은 관리자 투자 제어 권한 없음") @ValueSource(strings=["NONE","0037","1000"])
+    fun controlPermissions(who: String) {
+        if(who!="NONE")login(code=who)
+        val r=Steps.step("When 관리자가 아닌 사용자가 중지 요청") { setMode("PAUSED") }
+        failure(r,if(who=="NONE")401 else 403,if(who=="NONE")"SESSION_EXPIRED" else "FORBIDDEN")
+        Steps.step("Then 투자 접수는 RUNNING 유지") { assertThat(service.investmentStatus().status).isEqualTo(InvestmentMode.RUNNING) }
+    }
+    @Test @DisplayName("관리자도 CSRF 토큰·Origin이 틀리면 중지하지 못한다") fun controlCsrf() {
+        login("admin","4821")
+        Steps.step("When 토큰 누락 또는 다른 Origin으로 중지 요청") {
+            failure(call("PATCH","/api/v1/admin/investment-status","{\"status\":\"PAUSED\"}",csrf=false),403,"CSRF_INVALID")
+            failure(call("PATCH","/api/v1/admin/investment-status","{\"status\":\"PAUSED\"}",origin="https://other.example"),403,"CSRF_INVALID")
+        }
+        Steps.step("Then 상태·버전 불변") { assertThat(service.investmentStatus().revision).isZero() }
+    }
+    @ParameterizedTest(name="잘못된 제어 본문 {0}은 상태를 변경하지 않는다")
+    @ValueSource(strings=["{}","{\"status\":null}","{\"status\":\"BAD\"}","{\"status\":\"paused\"}","{\"status\":0}","{\"status\":true}","{\"status\":\"PAUSED\",\"balance\":1}"])
+    fun controlBadBody(body: String) {
+        login("admin","4821");val r=Steps.step("When 잘못된 JSON 상태로 중지 요청") { call("PATCH","/api/v1/admin/investment-status",body) }
+        failure(r,400,"INVALID_REQUEST");Steps.step("Then RUNNING·버전 0 유지") { assertThat(service.investmentStatus().revision).isZero() }
+    }
+    @Test @DisplayName("기동 시 스키마 준비를 반복해도 중지 상태와 거래는 보존한다") fun controlPersisted() {
+        login();invest(2,100000);login("admin","4821");setMode("PAUSED");val before=service.investmentStatus()
+        Steps.step("When 서버 기동의 DB initialize 재실행") { db.initialize() }
+        Steps.step("Then PAUSED·버전·시각·잔액·거래 보존") {
+            assertThat(service.investmentStatus()).isEqualTo(before);assertThat(service.investor("inv_001").balance).isEqualTo(900000)
+            assertThat(service.history("inv_001").count).isEqualTo(1)
+        }
+    }
+    @Test @DisplayName("상태 저장 실패는 전체 롤백하고 재시도할 수 있다") fun controlRollback() {
+        login("admin","4821");db.jdbc.execute("CREATE TRIGGER fail_control BEFORE UPDATE ON investment_control BEGIN SELECT RAISE(ABORT,'test control failure'); END")
+        try {
+            Steps.step("When DB가 중지 저장을 거절") { failure(setMode("PAUSED"),503,"SERVICE_UNAVAILABLE") }
+            Steps.step("Then RUNNING·버전 0·시각 null 유지") { assertThat(service.investmentStatus()).isEqualTo(InvestmentStatus(InvestmentMode.RUNNING,0,null)) }
+        } finally { db.jdbc.execute("DROP TRIGGER fail_control") }
+        assertThat(setMode("PAUSED").status).isEqualTo(200)
+    }
+    @Test @DisplayName("중지가 먼저 잠금을 얻으면 동시에 도착한 투자도 차감 없이 거절한다") fun pauseWinsRace() {
+        login();val pool=Executors.newFixedThreadPool(2);val paused=CountDownLatch(1);val release=CountDownLatch(1)
+        try {
+            val pause=pool.submit<InvestmentStatus> { db.write { val s=service.updateInvestmentStatus(InvestmentMode.PAUSED);paused.countDown();check(release.await(10,TimeUnit.SECONDS));s } }
+            check(paused.await(10,TimeUnit.SECONDS))
+            val investment=Steps.step("When 중지 트랜잭션이 먼저 잠금을 가진 상태에서 투자 요청") { pool.submit<String> { try { service.create("inv_001",UUID.randomUUID().toString(),InvestmentInput(2,100000));"SUCCEEDED" } catch(e: ApiException) { e.code } } }
+            release.countDown();assertThat(pause.get(10,TimeUnit.SECONDS).status).isEqualTo(InvestmentMode.PAUSED)
+            Steps.step("Then 중지 완료 후 투자 거절, 차감·거래·결과 불변") { assertThat(investment.get(10,TimeUnit.SECONDS)).isEqualTo("INVESTMENT_PAUSED");unchangedMoney() }
+        } finally { release.countDown();pool.shutdownNow() }
+    }
+    @Test @DisplayName("투자가 먼저 확정되면 유지하고 중지 성공 이후 새 투자는 거절한다") fun investmentWinsRace() {
+        login();val pool=Executors.newFixedThreadPool(2);val invested=CountDownLatch(1);val release=CountDownLatch(1)
+        try {
+            val investment=pool.submit<InvestmentReceipt> { db.write { val r=service.create("inv_001",UUID.randomUUID().toString(),InvestmentInput(2,100000));invested.countDown();check(release.await(10,TimeUnit.SECONDS));r } }
+            check(invested.await(10,TimeUnit.SECONDS))
+            val pause=Steps.step("When 투자 확정 트랜잭션 이후 중지 요청") { pool.submit<InvestmentStatus>{service.updateInvestmentStatus(InvestmentMode.PAUSED)} }
+            release.countDown();investment.get(10,TimeUnit.SECONDS);pause.get(10,TimeUnit.SECONDS)
+            Steps.step("Then 먼저 확정된 1건 유지, 중지 성공 뒤 새로운 팀 투자는 거절") {
+                failure(invest(3,100000),409,"INVESTMENT_PAUSED");assertThat(service.history("inv_001").count).isEqualTo(1)
+                assertThat(service.investor("inv_001").balance).isEqualTo(900000);assertThat(service.dashboard().snapshotVersion).isEqualTo(1)
+            }
+        } finally { release.countDown();pool.shutdownNow() }
+    }
+    @Test @DisplayName("스키마 제약은 우회한 잘못된 접수 상태도 차단한다") fun controlDbConstraint() {
+        Steps.step("When 서비스 우회로 알 수 없는 상태를 DB에 기록") { assertThatThrownBy { db.jdbc.update("UPDATE investment_control SET status='BAD' WHERE id=1") }.isInstanceOf(org.springframework.dao.DataAccessException::class.java) }
+        Steps.step("Then 초기 RUNNING 보존") { assertThat(service.investmentStatus().status).isEqualTo(InvestmentMode.RUNNING) }
+    }
+
 }

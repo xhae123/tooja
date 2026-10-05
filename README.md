@@ -6,10 +6,10 @@ Kotlin · Spring Boot · SQLite. 투자자·관리자 코드 로그인, 투자 �
 - [설계 결정 기록](adr/README.md): 선택별 배경·근거·대안·한계
 - [CI/CD·배포·프론트엔드 연동](docs/deployment.md): Actions 배포, 고정 주소, 프록시, DB 관리
 - [개발·실행·검증 안내](docs/development.md): Docker Compose, 데모 코드, 테스트·리포트 생성, 운영 설정
-- [현재 API 명세](http://129.225.170.51/api-docs): Swagger 호출 방법·응답·오류
-- [현재 OpenAPI JSON](http://129.225.170.51/v3/api-docs): 배포된 컨트롤러에서 생성한 명세
+- [현재 API 명세](https://api.leafeep.com/api-docs): Swagger 호출 방법·응답·오류
+- [현재 OpenAPI JSON](https://api.leafeep.com/v3/api-docs): 배포된 컨트롤러에서 생성한 명세
 - [화면별 품질 검증서](reports/quality.html): E2E 분기·번호별 화면 캡처·실행 결과
-- [현재 CI Allure](http://129.225.170.51/reports/allure/): 단위·통합 결과
+- [현재 CI Allure](https://api.leafeep.com/reports/allure/): 단위·통합 결과
 - [과거 통합 리포트](reports/allure/index.html): 단위·통합·E2E 실행 기록
 - [서버 구현](src/main/kotlin/com/tooja) · [단위·통합 테스트](src/test/kotlin/com/tooja) · [E2E 테스트](e2e)
 
