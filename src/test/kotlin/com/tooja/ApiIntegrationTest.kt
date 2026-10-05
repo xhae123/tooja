@@ -63,6 +63,22 @@ class ApiIntegrationTest {
         val r=call("POST","/api/v1/$role/session","{\"code\":\"$code\"}");assertThat(r.status).isEqualTo(200);val j=json(r);tokens[role]=j["csrfToken"].asText();return j
     }
     fun invest(team: Int,amount: Int,key: String=UUID.randomUUID().toString())=call("POST","/api/v1/investor/investments","{\"teamId\":$team,\"amount\":$amount}",key)
+    @Test @DisplayName("Given 실제 앱과 SQLite When 내부 metrics를 조회 Then JVM·HTTP·연결 풀과 DB 작업 시간이 제공된다")
+    fun internalMetrics() {
+        Steps.step("When 실제 DB 읽기와 HTTP 요청을 수행") { service.dashboard();call("GET","/api/v1/public/investment-status") }
+        Steps.step("Then 내부 수집 주소에서 운영 지표를 조회할 수 있다") {
+            val names=json(call("GET","/actuator/metrics"))["names"].map { it.asText() }
+            assertThat(names).contains("jvm.memory.used","http.server.requests","hikaricp.connections.active","tooja.database.operations")
+            assertThat(call("GET","/actuator/metrics/tooja.database.operations").status).isEqualTo(200)
+        }
+    }
+    @Test @DisplayName("Given 외부 접속 When Actuator metrics를 조회 Then 비공개 지표는 404이며 health는 공개된다")
+    fun externalMetricsBlocked() {
+        val metrics=MockMvcRequestBuilders.get("/actuator/metrics").with { it.remoteAddr="203.0.113.1";it }
+        Steps.step("Then 내부 지표는 외부에서 조회할 수 없다") { assertThat(mvc.perform(metrics).andReturn().response.status).isEqualTo(404) }
+        val health=MockMvcRequestBuilders.get("/actuator/health").with { it.remoteAddr="203.0.113.1";it }
+        assertThat(mvc.perform(health).andReturn().response.status).isEqualTo(200)
+    }
     fun failure(r: MockHttpServletResponse,status: Int,code: String) { Steps.step("Then HTTP $status · $code") { assertThat(r.status).isEqualTo(status);assertThat(json(r)["error"]["code"].asText()).isEqualTo(code);assertThat(r.getHeader("X-Request-ID")).isEqualTo(json(r)["requestId"].asText()) } }
     @Test @DisplayName("최초 로그인 전 미지급이고 최초 성공 때 정확히 100만원 지급한다") fun firstGrant() {
         assertThat(service.investor("inv_001").spendingStatus).isEqualTo("NOT_ACTIVATED")

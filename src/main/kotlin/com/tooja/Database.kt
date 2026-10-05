@@ -16,11 +16,13 @@ import kotlin.concurrent.withLock
 @Component
 class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private val secrets: Secrets, private val env: Environment,
     @Value("\${app.provisioning-mode:required}") private val provisioningMode: String,
-    @Value("\${app.accounts-csv}") private val accountsFile: String, @Value("\${app.teams-csv}") private val teamsFile: String) {
+    @Value("\${app.accounts-csv}") private val accountsFile: String, @Value("\${app.teams-csv}") private val teamsFile: String,
+    private val telemetry: Telemetry? = null) {
     private val tx = TransactionTemplate(tm)
     private val writeLock = ReentrantLock(true)
-    fun <T:Any> write(block: () -> T): T = writeLock.withLock { tx.execute { block() }!! }
-    fun <T:Any> read(block: () -> T): T = tx.execute { block() }!!
+    fun <T:Any> write(block: () -> T): T = measure("write") { writeLock.withLock { tx.execute { block() }!! } }
+    fun <T:Any> read(block: () -> T): T = measure("read") { tx.execute { block() }!! }
+    private fun <T> measure(operation: String,block: () -> T): T = telemetry?.database(operation,block) ?: block()
     @PostConstruct fun initialize() {
         jdbc.execute("PRAGMA journal_mode=WAL")
         jdbc.execute("PRAGMA busy_timeout=10000")

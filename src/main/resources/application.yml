@@ -21,7 +21,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: never
 app:
   reports-enabled: ${REPORTS_ENABLED:false}
   report-root: ${REPORT_ROOT:./reports}

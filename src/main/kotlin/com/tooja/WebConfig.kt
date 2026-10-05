@@ -67,7 +67,7 @@ class WebConfig(private val auth: AuthService,private val rates: RateLimits): We
     }
 }
 @RestControllerAdvice
-class Errors {
+class Errors(private val telemetry: Telemetry) {
     @ExceptionHandler(ApiException::class)
     fun api(e: ApiException,req: HttpServletRequest): ResponseEntity<ApiError> {
         val builder=ResponseEntity.status(e.status); e.retryAfter?.let { builder.header("Retry-After",it.toString()) }
@@ -80,7 +80,10 @@ class Errors {
     @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException::class,org.springframework.web.bind.MissingRequestHeaderException::class)
     fun type(e: Exception,req: HttpServletRequest): ResponseEntity<ApiError> = api(ApiException(422,"VALIDATION_FAILED","경로·헤더·필터 입력값을 확인해 주세요.",mapOf("fieldErrors" to listOf(mapOf("field" to "request","reason" to "INVALID_TYPE","message" to "필수 입력값과 타입을 확인하세요.")))),req)
     @ExceptionHandler(DataAccessException::class)
-    fun database(e: DataAccessException,req: HttpServletRequest): ResponseEntity<ApiError> = api(ApiException(503,"SERVICE_UNAVAILABLE","저장소에 연결할 수 없습니다. 결과를 다시 확인해 주세요.",retryAfter=5),req)
+    fun database(e: DataAccessException,req: HttpServletRequest): ResponseEntity<ApiError> {
+        telemetry.error(e,req,503,"SERVICE_UNAVAILABLE")
+        return api(ApiException(503,"SERVICE_UNAVAILABLE","저장소에 연결할 수 없습니다. 결과를 다시 확인해 주세요.",retryAfter=5),req)
+    }
     @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException::class)
     fun notFound(e: Exception,req: HttpServletRequest): ResponseEntity<ApiError> = api(ApiException(404,"RESOURCE_NOT_FOUND","요청한 경로를 찾을 수 없습니다."),req)
     @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException::class)
@@ -90,7 +93,7 @@ class Errors {
     }
     @ExceptionHandler(Exception::class)
     fun unexpected(e: Exception,req: HttpServletRequest): ResponseEntity<ApiError> {
-        org.slf4j.LoggerFactory.getLogger(Errors::class.java).error("Request {} failed",req.getAttribute("requestId"),e)
+        telemetry.error(e,req,500,"INTERNAL_ERROR")
         return api(ApiException(500,"INTERNAL_ERROR","처리 중 오류가 발생했습니다. 결과를 다시 확인해 주세요."),req)
     }
 }
