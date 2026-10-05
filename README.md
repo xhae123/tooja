@@ -13,3 +13,5 @@ Kotlin · Spring Boot · SQLite. 투자자·관리자 코드 로그인, 투자 �
 - [서버 구현](src/main/kotlin/com/tooja) · [단위·통합 테스트](src/test/kotlin/com/tooja) · [E2E 테스트](e2e)
 
 HTML 리포트는 해당 실행 당시의 기록입니다. GitHub에서는 다운로드하여 브라우저로 열 수 있습니다.
+
+- [현재 운영 설정·보호 범위·남은 과제](docs/runtime-review.md)

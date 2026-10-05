@@ -9,7 +9,7 @@
 
 ## 배포 흐름
 
-앱·테스트·배포 설정이 바뀐 main push → GitHub-hosted runner에서 Java 17 단위·통합 테스트 → JAR와 이번 실행의 Allure 생성 → 성공한 산출물만 OCI 배포 → 공개 주소 상태 확인 순서입니다. PR은 테스트만 합니다. ADR·README·docs 등 문서만 바뀌면 자동 실행하지 않습니다. workflow_dispatch로는 명시적으로 실행할 수 있습니다. E2E 실행·Playwright 설치·기존 E2E 결과 병합은 CI에 없습니다. `ci/package-lock.json`은 Allure CLI만 설치합니다.
+앱·테스트·배포 설정이 바뀐 main push → GitHub-hosted runner에서 Java 17 단위·통합 테스트 → JAR와 이번 실행의 Allure 생성 → 성공한 산출물만 OCI 배포 → 서버 내부에서 nginx를 거친 상태·커밋 확인 순서입니다. PR은 테스트만 합니다. ADR·README·docs 등 문서만 바뀌면 자동 실행하지 않습니다. workflow_dispatch로는 명시적으로 실행할 수 있습니다. E2E 실행·Playwright 설치·기존 E2E 결과 병합은 CI에 없습니다. `ci/package-lock.json`은 Allure CLI만 설치합니다.
 
 배포된 Allure와 앱은 같은 실행·커밋의 산출물입니다. 실패한 테스트 실행은 GitHub artifact에 남기고 기존 앱·리포트를 유지합니다. 각 실행의 증거는 14일 보관합니다. 현재 서버의 Allure는 최신 성공 배포 결과이며 과거 E2E HTML은 저장소의 별도 실행 기록입니다. Swagger는 실제 앱의 컨트롤러에서 자동 생성합니다.
 
@@ -17,9 +17,9 @@ SSH 배포 키는 oci environment에 저장하고 main 브랜치에서만 사용
 
 ## nginx와 데이터 보존
 
-공용 nginx는 최초 한 번 설정합니다. 외부 80번 요청을 Docker edge 네트워크의 `tooja-app:8080`으로 프록시하며 앱은 host port를 공개하지 않습니다. nginx는 Docker DNS를 재조회하므로 앱 컨테이너 IP가 바뀌어도 배포마다 설정 복사·reload·컨테이너 재시작을 하지 않습니다.
+공용 nginx 연결은 최초 한 번 설정하고, 보안 정책은 운영자가 별도로 관리합니다. 외부 80번 요청을 Docker edge 네트워크의 `tooja-app:8080`으로 프록시하며 앱은 host port를 공개하지 않습니다. nginx는 Docker DNS를 재조회하므로 앱 컨테이너 IP가 바뀌어도 배포마다 설정 복사·reload·컨테이너 재시작을 하지 않습니다.
 
-release는 `/home/ubuntu/services/tooja/releases/`에, DB는 별도 `data/`에 저장합니다. 배포 전에 기존 SQLite DB를 backup API로 백업하고, 앱 시작·공개 상태 확인에 실패하면 이전 앱 release로 복귀합니다. 이 롤백은 DB를 자동으로 과거로 되돌리지 않습니다. 스키마 변경 때는 별도의 검토된 마이그레이션이 필요합니다.
+release는 `/home/ubuntu/services/tooja/releases/`에, DB는 별도 `data/`에 저장합니다. 배포 전에 기존 SQLite DB를 backup API로 백업하고, 앱 시작·nginx 경유 상태 확인에 실패하면 이전 앱 release로 복귀합니다. 이 롤백은 DB를 자동으로 과거로 되돌리지 않습니다. 스키마 변경 때는 별도의 검토된 마이그레이션이 필요합니다.
 
 production 프로필의 수동 등록 모드는 재시작·재배포 때 데모를 자동 삽입하지 않습니다. 데모 데이터도 배포 성공 후 실제 SQLite DB에 직접 넣습니다. 코드 해시에 사용한 CODE_PEPPER는 서버에 보존하며 임의로 교체하지 않습니다.
 

@@ -20,11 +20,11 @@
 
 ## 영향과 한계
 
-localStorage는 삭제·우회할 수 있어 공격자에 대한 서버 인증 방어가 아닙니다. 해외 접속 차단은 사용자 계획이며 이번 CI/CD에서 구현·검증한 기능이 아닙니다. 서버 제한 카운터는 JVM에 있어 재시작하면 초기화됩니다.
+localStorage는 삭제·우회할 수 있어 공격자에 대한 서버 인증 방어가 아닙니다. 해외 접속 차단과 nginx 전체 API 요청 제한은 이후 [ADR 0023](0023-nginx-country-and-service-rate-limit.md)에 따라 별도로 적용했습니다. 서버 제한 카운터는 JVM에 있어 재시작하면 초기화됩니다.
 
 ## 현재 상태와 구현 근거
 
-브라우저 제한과 일반 API 서버 제한은 구현됨. 해외 차단은 미구현입니다.
+브라우저 제한과 일반 API 서버 제한은 구현됨. 해외 차단은 nginx에 추가 적용했습니다.
 
 - [src/main/resources/static/app.js](../src/main/resources/static/app.js)
 - [src/main/kotlin/com/tooja/WebConfig.kt](../src/main/kotlin/com/tooja/WebConfig.kt)
