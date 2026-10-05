@@ -6,7 +6,7 @@
 
 - [0001 Kotlin·Spring Boot·SQLite를 사용한다](0001-kotlin-spring-sqlite.md)
 - [0002 JPA 대신 Spring JDBC로 SQL을 직접 작성한다](0002-jdbc-over-jpa.md)
-- [0003 인증은 토큰 대신 DB 세션으로 관리한다](0003-database-sessions.md)
+- [0003 인증은 JWT 대신 DB 세션으로 관리한다](0003-database-sessions.md)
 - [0004 투자자와 관리자는 별도 세션 쿠키를 사용한다](0004-separate-role-cookies.md)
 - [0005 두 역할 모두 재사용하는 숫자 4자리 코드로 로그인한다](0005-reusable-four-digit-codes.md)
 - [0006 쿠키 인증의 쓰기 요청에 CSRF·Origin 검증을 적용한다](0006-csrf-and-same-origin.md)
