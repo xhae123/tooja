@@ -19,7 +19,11 @@ rollback() {
   exit 1
 }
 trap rollback ERR
-compose build --pull
+# Dedicated cache namespace; never prune another service's build cache.
+if ! docker buildx inspect tooja-release >/dev/null 2>&1; then
+  docker buildx create --name tooja-release --driver docker-container --driver-opt default-load=true,memory=512m
+fi
+compose build --builder tooja-release --pull
 if [ -f "$TOOJA_HOME/data/tooja.db" ]; then
   python3 - "$TOOJA_HOME" "$RELEASE_ID" <<'PY'
 import sqlite3,sys
@@ -58,3 +62,38 @@ ln -s "$RELEASE_DIR" "$TOOJA_HOME/current.next"
 mv -Tf "$TOOJA_HOME/current.next" "$TOOJA_HOME/current"
 trap - ERR
 printf '\nRelease activated: %s\n' "$RELEASE_ID"
+
+# Cleanup starts only after the new app and nginx checks succeeded.
+# No past application release is retained after a successful deployment.
+python3 - "$TOOJA_HOME" "$RELEASE_ID" <<'PYCLEANUP'
+import json,re,shutil,subprocess,sys
+from pathlib import Path
+root=Path(sys.argv[1]).resolve()
+release_id=sys.argv[2]
+assert re.fullmatch(r'[a-f0-9]{40}\.[1-9][0-9]*\.[1-9][0-9]*',release_id)
+current=(root/'current').resolve(strict=True)
+assert current==root/'releases'/release_id
+container=json.loads(subprocess.check_output(['docker','inspect','tooja-app'],text=True))[0]
+assert container['Config']['Image']=='tooja:'+release_id
+assert container['State']['Health']['Status']=='healthy'
+refs=subprocess.check_output(['docker','image','ls','--filter','reference=tooja:*','--format','{{.Repository}}:{{.Tag}}'],text=True).splitlines()
+removed_images=[]
+for ref in sorted(set(refs)):
+    assert ref.startswith('tooja:')
+    if ref=='tooja:'+release_id: continue
+    # No force: Docker refuses removal of an image used by any container.
+    subprocess.run(['docker','image','rm',ref],check=True)
+    removed_images.append(ref)
+removed_releases=[]
+for path in sorted((root/'releases').iterdir()):
+    if path==current: continue
+    if not re.fullmatch(r'[a-f0-9]{40}\.[1-9][0-9]*\.[1-9][0-9]*',path.name):
+        raise RuntimeError('Unexpected release path; refusing deletion: '+path.name)
+    if path.is_symlink() or not path.is_dir() or not (path/'app.jar').is_file():
+        raise RuntimeError('Unexpected release contents; refusing deletion: '+path.name)
+    shutil.rmtree(path)
+    removed_releases.append(path.name)
+print('RELEASE_CLEANUP '+json.dumps(dict(images=removed_images,releases=removed_releases)))
+PYCLEANUP
+docker buildx prune --builder tooja-release --all --force
+docker buildx stop tooja-release

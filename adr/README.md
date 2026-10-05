@@ -28,3 +28,5 @@
 - [0022 직접 인프라·DB 작업은 .local에 기록한다](0022-local-infra-audit.md)
 
 - [0023 · nginx 국가 차단과 서비스 전체 요청 제한](0023-nginx-country-and-service-rate-limit.md)
+
+- [0024 · 성공한 현재 배포 산출물만 보존](0024-current-release-only.md)

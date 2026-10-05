@@ -59,3 +59,7 @@ export default defineConfig({
 ## 해외 접근 차단 이후
 
 [nginx 접속 정책](edge-protection.md)에 따라 해외 IP의 HTTP 접근은 거절됩니다. GitHub Actions 배포 검증은 SSH로 연결된 서버 내부에서 nginx를 거쳐 수행하고, 일치하는 배포 커밋 증거를 Actions에서 확인합니다. 한국 외부 IP에서의 실제 접근은 별도 운영 검증 대상입니다. 앱 배포는 nginx 설정을 변경하거나 reload하지 않습니다.
+
+## 이전 배포 산출물 삭제
+
+새 버전의 health·OpenAPI·Allure·커밋 검증에 성공하면 이전 tooja 이미지와 모든 이전 릴리스 디렉터리(JAR·배포 파일·리포트)를 삭제합니다. 현재 릴리스만 보존합니다. 빌드는 tooja-release 전용 builder에서 수행하고 성공 후 그 캐시를 비웁니다. nginx·certbot 이미지나 다른 builder 캐시는 자동 정리 대상이 아닙니다. DB와 배포 전 DB 백업은 보존합니다. 새 버전 검증 실패 전에는 이전 버전을 삭제하지 않으므로 실패 복구가 가능하지만, 성공 후 이전 커밋으로 돌아가려면 CI/CD를 통해 재배포해야 합니다.
