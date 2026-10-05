@@ -1,6 +1,6 @@
 # CI/CD와 프론트엔드 연동
 
-기존 OCI A1 인스턴스의 예약 공인 IP를 사용합니다. 현재 연결 주소는 `https://api.leafeep.com`입니다.
+API는 OCI LB의 공인 IP에 연결해요. 앱 VM의 예약 IP는 SSH 관리에 사용해요. 현재 연결 주소는 `https://api.leafeep.com`입니다.
 
 - [API Swagger](https://api.leafeep.com/api-docs)
 - [현재 배포의 Allure](https://api.leafeep.com/reports/allure/): 단위·통합만 포함
