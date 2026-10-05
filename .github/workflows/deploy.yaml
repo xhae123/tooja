@@ -91,23 +91,22 @@ jobs:
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/tooja-deploy
           chmod 600 ~/.ssh/tooja-deploy
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          ssh -T -i ~/.ssh/tooja-deploy -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" < release/release.tar.gz
+          ssh -T -i ~/.ssh/tooja-deploy -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" < release/release.tar.gz | tee /tmp/tooja-deploy.log
           rm -f ~/.ssh/tooja-deploy
-      - name: Verify public deployment and matching report commit
+      - name: Verify SSH-authenticated nginx checks and matching report commit
         env:
           APP_URL: ${{ vars.APP_URL }}
           EXPECTED_COMMIT: ${{ github.sha }}
         run: |
-          curl --fail --retry 3 "$APP_URL/actuator/health"
-          curl --fail "$APP_URL/v3/api-docs" -o /tmp/openapi.json
-          curl --fail "$APP_URL/reports/allure/index.html" -o /tmp/allure.html
-          curl --fail "$APP_URL/deployment.json" -o /tmp/deployment.json
           python3 - <<'PY'
           import json,os
-          m=json.load(open('/tmp/deployment.json'))
+          lines=open('/tmp/tooja-deploy.log').read().splitlines()
+          evidence=[line.removeprefix('DEPLOYMENT_VERIFIED ') for line in lines if line.startswith('DEPLOYMENT_VERIFIED ')]
+          assert len(evidence)==1,'Missing or duplicate server verification'
+          m=json.loads(evidence[0])
           assert m['commit']==os.environ['EXPECTED_COMMIT'],m
-          assert m['tests']['e2e']==0,m
-          print('Deployed commit:',m['commit'],'Tests:',m['tests'])
+          assert m['tests']['e2e']==0 and m['tests']['failed']==0,m
+          print('Nginx health/OpenAPI/Allure verified on host. Deployed commit:',m['commit'],'Tests:',m['tests'])
           PY
           # shellcheck disable=SC2016
           printf 'Deployed `%s`\n\n- [Swagger](%s/api-docs)\n- [Allure: unit/integration only](%s/reports/allure/)\n' "$EXPECTED_COMMIT" "$APP_URL" "$APP_URL" >> "$GITHUB_STEP_SUMMARY"

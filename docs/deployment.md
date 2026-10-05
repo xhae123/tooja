@@ -55,3 +55,7 @@ export default defineConfig({
 ## 직접 DB 조작과 작업 기록
 
 [AGENTS.md](../AGENTS.md)의 절차를 따릅니다. 모든 인프라 작업은 Git 제외 `.local/infra/`에, SQL·트랜잭션·변경 전후 건수·검증·복구 기록은 `.local/db/`에 보관합니다. runtime.env, private key, pepper, 실제 사용자 데이터는 작업 기록·커밋·CI artifact에 넣지 않습니다.
+
+## 해외 접근 차단 이후
+
+[nginx 접속 정책](edge-protection.md)에 따라 해외 IP의 HTTP 접근은 거절됩니다. GitHub Actions 배포 검증은 SSH로 연결된 서버 내부에서 nginx를 거쳐 수행하고, 일치하는 배포 커밋 증거를 Actions에서 확인합니다. 한국 외부 IP에서의 실제 접근은 별도 운영 검증 대상입니다. 앱 배포는 nginx 설정을 변경하거나 reload하지 않습니다.

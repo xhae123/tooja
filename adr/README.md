@@ -26,3 +26,5 @@
 - [0020 nginx는 한 번 연결하고 앱 배포마다 갱신하지 않는다](0020-nginx-configure-once.md)
 - [0021 배포와 DB 명단 삽입을 분리한다](0021-persistent-data-manual-provisioning.md)
 - [0022 직접 인프라·DB 작업은 .local에 기록한다](0022-local-infra-audit.md)
+
+- [0023 · nginx 국가 차단과 서비스 전체 요청 제한](0023-nginx-country-and-service-rate-limit.md)

@@ -1,0 +1,8 @@
+[Unit]
+Description=Refresh tooja Korean IP geolocation allowlist
+After=docker.service network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+User=ubuntu
+ExecStart=/usr/bin/python3 /home/ubuntu/services/tooja/bin/update-country-allowlist.py

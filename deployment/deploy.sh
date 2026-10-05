@@ -34,10 +34,25 @@ fi
 compose up -d --wait --wait-timeout 120
 # nginx is configured once by the operator, and resolves app through Docker DNS.
 # Deployments do not modify, rebuild, restart or reload nginx.
+# Loopback crosses nginx while overseas HTTP access stays blocked.
+# This is checked on the SSH-authenticated host, not exempted for GitHub IPs.
 origin=$(sed -n 's/^APP_ORIGIN=//p' "$TOOJA_HOME/runtime.env")
-curl --fail --retry 5 --retry-delay 2 "$origin/actuator/health"
-curl --fail "$origin/v3/api-docs" -o "$RELEASE_DIR/reports/openapi.json"
-curl --fail "$origin/reports/allure/index.html" -o /dev/null
+edge_url=http://127.0.0.1
+edge_host=${origin#http://}
+curl --fail --retry 5 --retry-delay 2 -H "Host: $edge_host" "$edge_url/actuator/health"
+curl --fail -H "Host: $edge_host" "$edge_url/v3/api-docs" -o "$RELEASE_DIR/reports/openapi.json"
+curl --fail -H "Host: $edge_host" "$edge_url/reports/allure/index.html" -o /dev/null
+curl --fail -H "Host: $edge_host" "$edge_url/deployment.json" -o "$RELEASE_DIR/reports/verified-deployment.json"
+python3 - "$RELEASE_DIR" <<'PYVERIFY'
+import json,sys
+from pathlib import Path
+root=Path(sys.argv[1])
+expected=json.loads((root/'reports/deployment.json').read_text())
+actual=json.loads((root/'reports/verified-deployment.json').read_text())
+assert actual==expected, 'Served deployment metadata differs from release'
+assert actual['tests']['e2e']==0 and actual['tests']['failed']==0
+print('DEPLOYMENT_VERIFIED '+json.dumps(actual,separators=(',',':')))
+PYVERIFY
 ln -s "$RELEASE_DIR" "$TOOJA_HOME/current.next"
 mv -Tf "$TOOJA_HOME/current.next" "$TOOJA_HOME/current"
 trap - ERR

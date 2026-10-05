@@ -9,7 +9,9 @@
 - OCI 앱 배포는 GitHub Actions로 수행한다. 에이전트가 앱 이미지/JAR를 직접 업로드하거나 수동 실행하여 배포하지 않는다.
 - CI는 단위·통합 테스트만 실행한다. Playwright/E2E 실행·브라우저 설치·E2E 결과 병합은 CI에 넣지 않는다.
 - 배포한 JAR와 Allure는 같은 성공한 CI 실행의 산출물을 사용한다. Swagger는 배포한 컨트롤러에서 생성한다.
-- nginx는 최초 연결 설정만 한다. 앱 CI/CD에서 nginx 이미지·설정·컨테이너를 재배포하거나 reload하지 않는다. Docker DNS 재조회로 앱 IP 변경을 처리한다.
+- nginx 연결·보안 정책은 사용자 요청 시 운영자가 설정한다. 앱 CI/CD에서 nginx 이미지·설정·컨테이너를 재배포하거나 reload하지 않는다. Docker DNS 재조회로 앱 IP 변경을 처리한다.
+- 해외 차단 이후 CI의 HTTP 검증은 SSH로 인증된 서버 loopback에서 nginx를 거쳐 수행한다. 해외 GitHub 러너 HTTP 접근을 예외 허용하지 않는다.
+- 국가 IP 목록은 별도 월간 timer로 갱신하고 범위가 바뀔 때만 nginx 설정 검사 후 reload한다. 앱 CI/CD에는 이 작업을 넣지 않는다.
 - 실제 서버는 production 프로필과 PROVISIONING_MODE=manual을 사용한다. 배포·재시작 시 데모 데이터를 자동 삽입하거나 DB를 초기화하지 않는다.
 - OCI 접근·최초 배포 수신 설정은 로컬 oci-man 스킬과 기존 접근 설정을 사용한다. 인증정보를 로그나 저장소에 노출하지 않는다.
 
