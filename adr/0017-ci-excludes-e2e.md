@@ -8,7 +8,7 @@
 
 ## 결정
 
-GitHub-hosted CI는 JVM 단위·SQLite 통합 테스트를 실행하고 그 결과만 Allure로 만듭니다. CI Node 의존성에는 Allure CLI만 설치합니다.
+GitHub-hosted CI는 JVM 단위·SQLite 통합 테스트를 실행하고 그 결과만 Allure로 만듭니다. CI Node 의존성에는 Allure CLI만 설치합니다. ADR·README·docs만 변경한 커밋은 CI/CD를 생략하고 앱·테스트·배포 설정 변경을 검증합니다.
 
 ## 선택 이유
 

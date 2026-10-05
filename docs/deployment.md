@@ -9,7 +9,7 @@
 
 ## 배포 흐름
 
-main push → GitHub-hosted runner에서 Java 17 단위·통합 테스트 → JAR와 이번 실행의 Allure 생성 → 성공한 산출물만 OCI 배포 → 공개 주소 상태 확인 순서입니다. PR은 테스트만 합니다. E2E 실행·Playwright 설치·기존 E2E 결과 병합은 CI에 없습니다. `ci/package-lock.json`은 Allure CLI만 설치합니다.
+앱·테스트·배포 설정이 바뀐 main push → GitHub-hosted runner에서 Java 17 단위·통합 테스트 → JAR와 이번 실행의 Allure 생성 → 성공한 산출물만 OCI 배포 → 공개 주소 상태 확인 순서입니다. PR은 테스트만 합니다. ADR·README·docs 등 문서만 바뀌면 자동 실행하지 않습니다. workflow_dispatch로는 명시적으로 실행할 수 있습니다. E2E 실행·Playwright 설치·기존 E2E 결과 병합은 CI에 없습니다. `ci/package-lock.json`은 Allure CLI만 설치합니다.
 
 배포된 Allure와 앱은 같은 실행·커밋의 산출물입니다. 실패한 테스트 실행은 GitHub artifact에 남기고 기존 앱·리포트를 유지합니다. 각 실행의 증거는 14일 보관합니다. 현재 서버의 Allure는 최신 성공 배포 결과이며 과거 E2E HTML은 저장소의 별도 실행 기록입니다. Swagger는 실제 앱의 컨트롤러에서 자동 생성합니다.
 
