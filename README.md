@@ -2,6 +2,7 @@
 
 Kotlin · Spring Boot · SQLite. 투자자·관리자 코드 로그인, 투자 확정, 관리자 현황, 공개 순위를 제공합니다.
 
+- [CI/CD·배포·프론트엔드 연동](docs/deployment.md): Actions 배포, 고정 주소, 프록시, DB 관리
 - [개발·실행·검증 안내](docs/development.md): Docker Compose, 데모 코드, 테스트·리포트 생성, 운영 설정
 - [API 명세](http://localhost:18080/api-docs): 서버 실행 후 Swagger에서 호출 방법·응답·오류 확인
 - [OpenAPI JSON](reports/openapi.json): 컨트롤러에서 생성한 명세

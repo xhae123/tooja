@@ -1,4 +1,5 @@
 app:
+  reports-enabled: true
   secure-cookies: false
   pepper: isolated-test-pepper
 spring:

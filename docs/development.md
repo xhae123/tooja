@@ -15,7 +15,7 @@ docker compose up -d --build --wait
 - OpenAPI JSON: http://localhost:18080/v3/api-docs
 - Allure 통합 리포트: http://localhost:18080/reports/allure/
 
-Allure는 생성된 HTML·데이터를 Spring에서 제공하고 브라우저의 JavaScript가 화면을 그립니다. Thymeleaf SSR 화면과 렌더링 방식이 다릅니다. 리포트 경로는 demo/test 프로필에서만 활성화하며 Compose는 생성된 Allure 폴더를 읽기 전용으로 연결합니다. 리포트를 다시 생성하면 서버 재빌드 없이 최신 파일이 반영됩니다.
+Allure는 생성된 HTML·데이터를 Spring에서 제공하고 브라우저의 JavaScript가 화면을 그립니다. Thymeleaf SSR 화면과 렌더링 방식이 다릅니다. 로컬 demo/test에서는 리포트를 활성화하며 실제 배포에서는 REPORTS_ENABLED 설정으로 활성화합니다. 로컬 Compose는 생성된 Allure 폴더를 읽기 전용으로 연결합니다. 리포트를 다시 생성하면 서버 재빌드 없이 최신 파일이 반영됩니다.
 
 기본 Compose는 **데모 데이터**를 사용하는 로컬 실행 환경입니다. 참가자 `0037`(팀01), `0038`(팀03), `0039`(팀04), `0040`(팀05), 운영팀 투자자 `1000`, 관리자 `4821`. 코드는 문자열이며 실제 행사용 발급 코드가 아닙니다. 데모의 팀 이름·소개도 예시입니다. SSR은 Thymeleaf로 페이지 구조를 렌더링하고 브라우저에서 실제 API를 호출하는 테스트용 화면입니다.
 
@@ -57,7 +57,7 @@ SQLite WAL·외래 키·CHECK·UNIQUE 제약을 사용하고 투자 차감·거�
 
 ## 실제 행사 데이터로 전환
 
-데모·테스트 프로필을 제외하고 `CODE_PEPPER`(16자 이상), HTTPS의 `APP_ORIGIN`, `SECURE_COOKIES=true`, 영속 `DB_PATH`를 지정합니다. 최초 기동에는 `TEAMS_CSV`, `ACCOUNTS_CSV`의 파일 경로도 필요합니다. 20개 팀과 계정 데이터를 한 트랜잭션으로 검증·등록하며 오류가 있으면 초기화하지 않습니다. 기본 데모 Compose를 그대로 외부에 공개하는 배포 작업은 하지 않았습니다.
+데모·테스트 프로필을 제외하고 `CODE_PEPPER`(16자 이상), HTTPS의 `APP_ORIGIN`, `SECURE_COOKIES=true`, 영속 `DB_PATH`를 지정합니다. 최초 기동에는 `TEAMS_CSV`, `ACCOUNTS_CSV`의 파일 경로도 필요합니다. 20개 팀과 계정 데이터를 한 트랜잭션으로 검증·등록하며 오류가 있으면 초기화하지 않습니다. OCI는 production 프로필과 PROVISIONING_MODE=manual로 배포합니다. DB 스키마만 준비하고 초기 데모 데이터는 배포 확인 후 직접 등록합니다. 재배포는 직접 수정한 데이터를 보존합니다.
 
 팀 파일 헤더: `teamId,serviceName,description` (소개에 쉼표 가능, 이름에는 불가).
 계정 파일 헤더: `id,code,role,kind,teamId,alias` (필드 내 쉼표·줄바꿈 불가).

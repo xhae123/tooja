@@ -2,14 +2,14 @@ package com.tooja
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Profile
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 import java.nio.file.Path
 
 @Configuration
-@Profile("demo", "test")
+@ConditionalOnProperty(name=["app.reports-enabled"],havingValue="true")
 class ReportHosting(@Value("\${app.report-root:./reports}") private val reportRoot: String) : WebMvcConfigurer {
     override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
         val directory = Path.of(reportRoot).resolve("allure").toAbsolutePath().toUri().toString().trimEnd('/') + "/"

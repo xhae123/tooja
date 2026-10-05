@@ -1,0 +1,27 @@
+services:
+  app:
+    image: tooja:${RELEASE_ID:?release required}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tooja-app
+    env_file: ${TOOJA_HOME:?home required}/runtime.env
+    environment:
+      SPRING_PROFILES_ACTIVE: production
+      PROVISIONING_MODE: manual
+      DB_PATH: /app/data/tooja.db
+      REPORTS_ENABLED: 'true'
+      REPORT_ROOT: /app/reports
+    volumes:
+      - ${TOOJA_HOME}/data:/app/data
+      - ${RELEASE_DIR:?directory required}/reports:/app/reports:ro
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080; printf 'GET /actuator/health HTTP/1.0\r\n\r\n' >&3; cat <&3 | grep -q UP"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+    restart: unless-stopped
+networks:
+  edge:
+    external: true

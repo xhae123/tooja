@@ -23,6 +23,9 @@ management:
       exposure:
         include: health
 app:
+  reports-enabled: ${REPORTS_ENABLED:false}
+  report-root: ${REPORT_ROOT:./reports}
+  provisioning-mode: ${PROVISIONING_MODE:required}
   origin: ${APP_ORIGIN:http://localhost:8080}
   secure-cookies: ${SECURE_COOKIES:true}
   pepper: ${CODE_PEPPER:}

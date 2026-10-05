@@ -13,3 +13,7 @@ __pycache__/
 .DS_Store
 .env.*
 !.env.example
+
+# Local database operation records and credentials
+.local/
+reports/ci-allure/

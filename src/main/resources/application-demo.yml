@@ -1,3 +1,4 @@
 app:
+  reports-enabled: true
   secure-cookies: false
   pepper: demo-only-change-before-production

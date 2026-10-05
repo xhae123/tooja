@@ -15,6 +15,7 @@ import kotlin.concurrent.withLock
 
 @Component
 class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private val secrets: Secrets, private val env: Environment,
+    @Value("\${app.provisioning-mode:required}") private val provisioningMode: String,
     @Value("\${app.accounts-csv}") private val accountsFile: String, @Value("\${app.teams-csv}") private val teamsFile: String) {
     private val tx = TransactionTemplate(tm)
     private val writeLock = ReentrantLock(true)
@@ -34,7 +35,8 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
             "CREATE TABLE IF NOT EXISTS metadata(id INTEGER PRIMARY KEY CHECK(id=1), version INTEGER NOT NULL DEFAULT 0)",
             "INSERT OR IGNORE INTO metadata(id,version) VALUES(1,0)"
         ).forEach(jdbc::execute)
-        if (env.activeProfiles.any { it in listOf("demo","test") }) seedDemo() else importProvisioning()
+        require(provisioningMode in listOf("required","manual")) { "Unknown provisioning mode" }
+        if (env.activeProfiles.any { it in listOf("demo","test") }) seedDemo() else if(provisioningMode=="required") importProvisioning()
     }
     fun seedDemo() = write {
         for (id in 1..20) jdbc.update("INSERT OR IGNORE INTO teams VALUES(?,?,?)", id,"팀%02d 데모 서비스".format(id),"팀%02d 부스에서 서비스를 체험하고 투자해 보세요.".format(id))
