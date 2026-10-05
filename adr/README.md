@@ -32,3 +32,5 @@
 - [0024 · 성공한 현재 배포 산출물만 보존](0024-current-release-only.md)
 
 - [0025 · 전체 투자 접수를 중지·재개해요](0025-investment-pause-resume.md)
+
+- [0026 · Swagger는 문서를 연 주소로 API를 호출해요](0026-swagger-same-origin.md)
