@@ -87,6 +87,7 @@ jobs:
           DEPLOY_HOST: ${{ vars.OCI_HOST }}
           DEPLOY_USER: ${{ secrets.OCI_USER }}
         run: |
+          set -euo pipefail
           install -d -m 700 ~/.ssh
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/tooja-deploy
           chmod 600 ~/.ssh/tooja-deploy
