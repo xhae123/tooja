@@ -2,6 +2,7 @@
 
 Kotlin · Spring Boot · SQLite. 투자자·관리자 코드 로그인, 투자 확정, 관리자 현황, 공개 순위를 제공합니다.
 
+- [프론트엔드 연동 시작하기](docs/frontend.md): 접속 주소, 로컬 프록시, 로그인·투자 요청
 - [설계 결정 기록](adr/README.md): 선택별 배경·근거·대안·한계
 - [CI/CD·배포·프론트엔드 연동](docs/deployment.md): Actions 배포, 고정 주소, 프록시, DB 관리
 - [개발·실행·검증 안내](docs/development.md): Docker Compose, 데모 코드, 테스트·리포트 생성, 운영 설정
