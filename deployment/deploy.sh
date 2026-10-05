@@ -51,7 +51,8 @@ expected=json.loads((root/'reports/deployment.json').read_text())
 actual=json.loads((root/'reports/verified-deployment.json').read_text())
 assert actual==expected, 'Served deployment metadata differs from release'
 assert actual['tests']['e2e']==0 and actual['tests']['failed']==0
-print('DEPLOYMENT_VERIFIED '+json.dumps(actual,separators=(',',':')))
+# Health JSON has no trailing newline; start evidence on its own line.
+print('\nDEPLOYMENT_VERIFIED '+json.dumps(actual,separators=(',',':')))
 PYVERIFY
 ln -s "$RELEASE_DIR" "$TOOJA_HOME/current.next"
 mv -Tf "$TOOJA_HOME/current.next" "$TOOJA_HOME/current"
