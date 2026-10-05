@@ -57,7 +57,7 @@ if grep -q '^EDGE_MODE=oci-lb$' "$TOOJA_HOME/runtime.env"; then
   [ -n "$edge_ip" ]
 fi
 edge_curl() { curl --fail --resolve "$edge_host:$edge_port:$edge_ip" "$@"; }
-edge_curl --retry 5 --retry-delay 2 "$origin/actuator/health"
+edge_curl --retry 60 --retry-delay 2 --retry-all-errors --connect-timeout 5 --max-time 10 --retry-max-time 180 "$origin/actuator/health"
 edge_curl "$origin/v3/api-docs" -o "$RELEASE_DIR/reports/openapi.json"
 edge_curl "$origin/reports/allure/index.html" -o /dev/null
 edge_curl "$origin/deployment.json" -o "$RELEASE_DIR/reports/verified-deployment.json"
