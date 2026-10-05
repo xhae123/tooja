@@ -60,16 +60,41 @@ export default defineConfig({
 
 투자자와 관리자는 같은 브라우저에서 동시에 로그인할 수 있어요. **두 역할의 CSRF 토큰을 각각 보관**해 주세요. 세션은 로그인 후 48시간이고, `401`이면 해당 역할의 로그인 화면으로 보내주세요.
 
-## 투자 확정에서 이것만 주의해 주세요
+## 투자 화면은 전체 접수 상태부터 확인해 주세요
 
-먼저 팀 조회 응답의 **`investmentStatus.status`**를 확인해 주세요. `PAUSED`면 투자 버튼을 비활성화하고 중지 안내를 보여주세요. 소개·잔액·내역 조회는 계속 가능해요. `RUNNING`이면 팀별 `investmentState`와 `allowedAmounts`로 투자 가능 여부와 금액 버튼을 표시해 주세요. 확정한 투자는 취소하거나 바꿀 수 없어요.
+부스 목록·소개와 관리자 현황 응답에는 **`investmentStatus`**가 들어 있어요. 화면에서는 `investmentStatus.status`를 읽어주세요.
 
-투자 요청에는 `X-CSRF-Token` 외에 **`Idempotency-Key: UUID v4`**가 필요해요. 한 번의 투자에 키를 하나 만들고, 응답이 끊겼다면 새 키를 만들지 말고 **같은 키·같은 본문**으로 결과를 조회하거나 재전송해 주세요. 복구 순서는 [API 문서의 투자 확정·요청 결과 조회](https://api.leafeep.com/api-docs)를 봐주세요.
+| 상태 | 화면에서 할 일 |
+|---|---|
+| `RUNNING` | 팀별 `investmentState`와 `allowedAmounts`를 보고 투자 가능 여부와 금액 버튼을 표시해요. |
+| `PAUSED` | 투자 버튼을 막고 “지금은 투자가 중지되어 있어요”라고 안내해요. 소개·잔액·내역·순위는 계속 보여주세요. |
 
-현재 서버는 HTTPS라서 `crypto.randomUUID()`를 사용할 수 있어요. HTTP 개발 환경에서 이 함수가 없으면 필요한 경우 [임시 화면의 `investmentRequestKey()`](../src/main/resources/static/app.js)를 참고해 주세요. HTTP에서도 사용할 수 있는 `crypto.getRandomValues()`로 키를 만들어요.
+팀별 상태가 `AVAILABLE`이어도 전체 상태가 `PAUSED`면 투자할 수 없어요. 중지는 로그아웃이나 세션 만료가 아니에요.
 
-오류는 HTTP 상태와 `error.code`로 구분하고, `error.message`를 안내에 사용해 주세요. `429`에 `Retry-After`가 있으면 그 시간 동안 기다렸다가 다시 요청해 주세요. API별 상세 조건은 [API 문서](https://api.leafeep.com/api-docs)에 있어요.
+상태만 다시 확인하려면 `GET /api/v1/public/investment-status`를 호출해 주세요. 로그인 없이 사용할 수 있고, 이 API에서는 응답 최상위의 `status`를 읽어요. 재개 여부를 확인한 뒤 투자 버튼을 다시 열어주세요. 화면을 열었을 때 받은 상태가 계속 유지된다고 가정하면 안 돼요.
 
-관리자는 `PATCH /api/v1/admin/investment-status`에 `{"status":"PAUSED"}`로 중지하고, `{"status":"RUNNING"}`으로 재개해요. 관리자 현황에도 상태가 포함돼요. 로그인 없이 상태만 확인하려면 `GET /api/v1/public/investment-status`를 사용하세요.
+## 투자 확정과 오류는 이렇게 처리해 주세요
 
-화면을 연 뒤 관리자가 중지할 수도 있으니 확정 응답의 `409 INVESTMENT_PAUSED`도 처리해 주세요. 이 오류는 요청 키를 소비하지 않아요. 재개 후 같은 키·본문으로 다시 시도할 수 있고, 이미 성공한 요청을 중지 중에 재전송하면 기존 영수증을 받아요.
+투자 요청에는 `X-CSRF-Token` 외에 **`Idempotency-Key: UUID v4`**가 필요해요. 한 번의 투자에 키를 하나 만들고, 응답이 끊겼다면 **같은 키·같은 본문**으로 결과를 조회하거나 재전송해 주세요. 자세한 복구 순서는 [API 문서의 투자 확정·요청 결과 조회](https://api.leafeep.com/api-docs)를 봐주세요. 확정한 투자는 취소하거나 바꿀 수 없어요.
+
+화면에서 금액 확인 창을 연 뒤 관리자가 중지할 수도 있어요. **버튼을 막는 것과 별개로 확정 응답의 `409 INVESTMENT_PAUSED`도 처리**해 주세요.
+
+- 중지 안내를 보여주고 확인 창의 진행 상태를 풀어주세요. 투자에 성공한 것처럼 표시하면 안 돼요.
+- 중지 오류는 요청 키를 소비하지 않아요. 재개 후 사용자가 다시 확정하면 같은 키·본문으로 투자할 수 있어요.
+- 이미 성공한 요청을 중지 중에 재전송하면 기존 영수증을 받아요. 이때는 성공 화면으로 이동해도 돼요. 추가 차감은 없어요.
+
+HTTPS 화면에서는 `crypto.randomUUID()`로 키를 만들 수 있어요. 실행하는 브라우저 환경에 이 함수가 없다면 [임시 화면의 `investmentRequestKey()`](../src/main/resources/static/app.js)를 참고해 주세요.
+
+오류 분기는 HTTP 상태와 `error.code`로 구분하고, `error.message`는 안내에 사용해 주세요. `401`이면 해당 역할의 로그인 화면으로 이동하고, `429`에 `Retry-After`가 있으면 그 시간 동안 기다려 주세요. 나머지 API별 조건은 [API 문서](https://api.leafeep.com/api-docs)에 있어요.
+
+## 관리자 중지·재개 버튼은 이렇게 연결해 주세요
+
+`PATCH /api/v1/admin/investment-status`에 **바꾸려는 상태**를 보내요. 관리자 세션, 관리자 CSRF 토큰과 허용 Origin이 필요해요.
+
+```json
+{ "status": "PAUSED" }
+```
+
+중지는 `PAUSED`, 재개는 `RUNNING`이에요. 성공 응답의 `status`로 버튼과 안내를 갱신해 주세요. 이미 같은 상태면 추가 변경 없이 성공해요.
+
+중지 상태는 서버에 저장돼 새로고침하거나 서버를 재시작해도 유지돼요. 중지 전에 먼저 확정된 투자는 그대로 남아요.
