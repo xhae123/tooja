@@ -14,6 +14,7 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 @Component
+@org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization
 class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private val secrets: Secrets, private val env: Environment,
     @Value("\${app.provisioning-mode:required}") private val provisioningMode: String,
     @Value("\${app.accounts-csv}") private val accountsFile: String, @Value("\${app.teams-csv}") private val teamsFile: String,
@@ -23,7 +24,10 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
     fun <T:Any> write(block: () -> T): T = measure("write") { writeLock.withLock { tx.execute { block() }!! } }
     fun <T:Any> read(block: () -> T): T = measure("read") { tx.execute { block() }!! }
     private fun <T> measure(operation: String,block: () -> T): T = telemetry?.database(operation,block) ?: block()
+    val mysql: Boolean get() = env.activeProfiles.contains("mysql")
+    private fun insertIgnore(sql: String): String = if (mysql) sql.replace("INSERT OR IGNORE", "INSERT IGNORE") else sql
     @PostConstruct fun initialize() {
+        if (!mysql) {
         jdbc.execute("PRAGMA journal_mode=WAL")
         jdbc.execute("PRAGMA busy_timeout=10000")
         listOf(
@@ -39,13 +43,14 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
             "CREATE TABLE IF NOT EXISTS investment_control(id INTEGER PRIMARY KEY CHECK(id=1), status TEXT NOT NULL CHECK(status IN ('RUNNING','PAUSED')), revision INTEGER NOT NULL DEFAULT 0 CHECK(revision>=0), updated_at TEXT)",
             "INSERT OR IGNORE INTO investment_control(id,status,revision) VALUES(1,'RUNNING',0)"
         ).forEach(jdbc::execute)
+        }
         require(provisioningMode in listOf("required","manual")) { "Unknown provisioning mode" }
         if (env.activeProfiles.any { it in listOf("demo","test") }) seedDemo() else if(provisioningMode=="required") importProvisioning()
     }
     fun seedDemo() = write {
-        for (id in 1..20) jdbc.update("INSERT OR IGNORE INTO teams VALUES(?,?,?)", id,"팀%02d 데모 서비스".format(id),"팀%02d 부스에서 서비스를 체험하고 투자해 보세요.".format(id))
+        for (id in 1..20) jdbc.update(insertIgnore("INSERT OR IGNORE INTO teams VALUES(?,?,?)"), id,"팀%02d 데모 서비스".format(id),"팀%02d 부스에서 서비스를 체험하고 투자해 보세요.".format(id))
         val fixtures=listOf(listOf("inv_001","0037","INVESTOR","PARTICIPANT",1,"팀01 투자자001"),listOf("inv_002","0038","INVESTOR","PARTICIPANT",3,"팀03 투자자002"),listOf("inv_003","0039","INVESTOR","PARTICIPANT",4,"팀04 투자자003"),listOf("inv_004","0040","INVESTOR","PARTICIPANT",5,"팀05 투자자004"),listOf("staff_001","1000","INVESTOR","STAFF",null,"운영팀 투자자001"),listOf("admin_001","4821","ADMIN",null,null,"관리자"))
-        fixtures.forEach { a -> jdbc.update("INSERT OR IGNORE INTO accounts(id,code_hash,role,kind,team_id,alias) VALUES(?,?,?,?,?,?)",a[0],secrets.codeHash(a[1] as String),a[2],a[3],a[4],a[5]) }
+        fixtures.forEach { a -> jdbc.update(insertIgnore("INSERT OR IGNORE INTO accounts(id,code_hash,role,kind,team_id,alias) VALUES(?,?,?,?,?,?)"),a[0],secrets.codeHash(a[1] as String),a[2],a[3],a[4],a[5]) }
         true
     }
     private fun importProvisioning() {

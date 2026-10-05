@@ -7,6 +7,8 @@ spring:
     hikari:
       maximum-pool-size: 8
       connection-init-sql: PRAGMA foreign_keys=ON
+  flyway:
+    enabled: false
   jackson:
     deserialization:
       fail-on-unknown-properties: true
@@ -31,6 +33,8 @@ app:
   provisioning-mode: ${PROVISIONING_MODE:required}
   origin: ${APP_ORIGIN:http://localhost:8080}
   secure-cookies: ${SECURE_COOKIES:true}
+  enforce-https: ${ENFORCE_HTTPS:false}
+  acme-root: ${ACME_ROOT:}
   pepper: ${CODE_PEPPER:}
   accounts-csv: ${ACCOUNTS_CSV:}
   teams-csv: ${TEAMS_CSV:}
@@ -40,3 +44,6 @@ springdoc:
     tags-sorter: alpha
     operations-sorter: alpha
     default-models-expand-depth: -1
+
+server.tomcat.connection-timeout: 15s
+server.tomcat.keep-alive-timeout: 30s

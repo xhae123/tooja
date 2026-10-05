@@ -15,6 +15,7 @@ import java.sql.SQLException
 
 /** Metrics are scraped from the host over the private Docker bridge, never through public nginx. */
 @Component
+@org.springframework.core.annotation.Order(-90)
 class InternalMetricsFilter(@Value("\${app.metrics-host-address:172.19.0.1}") private val hostAddress: String = "172.19.0.1"): OncePerRequestFilter() {
     override fun doFilterInternal(req: HttpServletRequest,res: HttpServletResponse,chain: FilterChain) {
         if ((req.requestURI == "/actuator" || req.requestURI.startsWith("/actuator/metrics")) &&
@@ -37,7 +38,7 @@ class Telemetry(private val registry: MeterRegistry, private val mapper: ObjectM
             "code" to code, "requestId" to (req.getAttribute("requestId")?.toString() ?: "unknown"),
             "method" to req.method, "route" to (req.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE)?.toString() ?: "unmatched"),
             "exception" to e.javaClass.simpleName)
-        sql?.let { event["sqliteErrorCode"] = it.errorCode }
+        sql?.let { event["sqlErrorCode"] = it.errorCode }
         log.error(mapper.writeValueAsString(event))
     }
     fun <T> database(operation: String,block: () -> T): T {

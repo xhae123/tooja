@@ -12,7 +12,7 @@ class InvestmentService(private val db: Database, private val clock: Clock) {
         return InvestmentStatus(InvestmentMode.valueOf(r["status"].toString()),(r["revision"] as Number).toLong(),r["updated_at"]?.let { Instant.parse(it.toString()) })
     }
     fun investmentStatus(): InvestmentStatus = db.read { control() }
-    // Shares the investment write lock and SQLite transaction: no new investment
+    // Shares the investment write lock and database transaction: no new investment
     // can pass the guard after a successful pause response.
     fun updateInvestmentStatus(status: InvestmentMode): InvestmentStatus = db.write {
         db.jdbc.update("UPDATE investment_control SET status=?,revision=revision+1,updated_at=? WHERE id=1 AND status<>?",status.name,clock.instant().toString(),status.name)
@@ -37,7 +37,7 @@ class InvestmentService(private val db: Database, private val clock: Clock) {
     }
     private fun investment(r: Map<String,Any?>) = Investment(r["id"].toString(),(r["team_id"] as Number).toInt(),r["name"].toString(),(r["amount"] as Number).toInt(),Instant.parse(r["confirmed_at"].toString()))
     fun history(id: String): InvestmentHistory = db.read {
-        val i=investor(id);val items=db.jdbc.queryForList("SELECT i.*,t.name FROM investments i JOIN teams t ON t.id=i.team_id WHERE account_id=? ORDER BY confirmed_at DESC,i.rowid DESC",id).map(::investment)
+        val i=investor(id);val items=db.jdbc.queryForList("SELECT i.*,t.name FROM investments i JOIN teams t ON t.id=i.team_id WHERE account_id=? ORDER BY confirmed_at DESC,i.version DESC",id).map(::investment)
         InvestmentHistory(i,items,items.size,clock.instant())
     }
     fun detail(id: String,iid: String): InvestmentDetail = db.read {

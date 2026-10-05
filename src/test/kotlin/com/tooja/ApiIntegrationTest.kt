@@ -30,12 +30,8 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test")
-@DisplayName("통합 테스트 · 실제 SQLite와 HTTP 컨트롤러")
-class ApiIntegrationTest {
-    companion object {
-        private val file=Files.createTempFile("tooja-integration-",".db")
-        @JvmStatic @DynamicPropertySource fun properties(r: DynamicPropertyRegistry) { r.add("spring.datasource.url") { "jdbc:sqlite:$file" } }
-    }
+@org.springframework.context.annotation.Import(ApiContractIntegrationTest.TimeConfig::class)
+abstract class ApiContractIntegrationTest {
     @TestConfiguration class TimeConfig { @Bean @Primary fun controlledClock(): Clock=MutableClock() }
     @Autowired lateinit var mvc: MockMvc
     @Autowired lateinit var mapper: ObjectMapper
@@ -45,7 +41,7 @@ class ApiIntegrationTest {
     @Autowired lateinit var clock: Clock
     private val cookies=mutableMapOf<String,Cookie>()
     private val tokens=mutableMapOf<String,String>()
-    @BeforeEach fun given() { db.reset();rates.clear();(clock as MutableClock).current=Instant.parse("2026-10-05T00:00:00Z");cookies.clear();tokens.clear();Allure.label("parentSuite","통합 테스트");Allure.label("suite","컨트롤러 + 실제 SQLite");Steps.step("Given 초기화된 SQLite에 투자자 5명과 관리자 1명을 사전 등록") }
+    @BeforeEach fun given() { db.reset();rates.clear();(clock as MutableClock).current=Instant.parse("2026-10-05T00:00:00Z");cookies.clear();tokens.clear();Allure.label("parentSuite","통합 테스트");Allure.label("suite","컨트롤러 + 실제 ${if(db.mysql) "MySQL" else "SQLite"}");Steps.step("Given 초기화된 ${if(db.mysql) "MySQL" else "SQLite"}에 투자자 5명과 관리자 1명을 사전 등록") }
     fun call(method: String,path: String,body: String?=null,key: String?=null,csrf: Boolean=true,origin: String="http://localhost:8080"): MockHttpServletResponse {
         val req=MockMvcRequestBuilders.request(org.springframework.http.HttpMethod.valueOf(method),path).header("Origin",origin)
         if(cookies.isNotEmpty())req.cookie(*cookies.values.toTypedArray())
@@ -63,7 +59,7 @@ class ApiIntegrationTest {
         val r=call("POST","/api/v1/$role/session","{\"code\":\"$code\"}");assertThat(r.status).isEqualTo(200);val j=json(r);tokens[role]=j["csrfToken"].asText();return j
     }
     fun invest(team: Int,amount: Int,key: String=UUID.randomUUID().toString())=call("POST","/api/v1/investor/investments","{\"teamId\":$team,\"amount\":$amount}",key)
-    @Test @DisplayName("Given 실제 앱과 SQLite When 내부 metrics를 조회 Then JVM·HTTP·연결 풀과 DB 작업 시간이 제공된다")
+    @Test @DisplayName("Given 실제 앱과 DB When 내부 metrics를 조회 Then JVM·HTTP·연결 풀과 DB 작업 시간이 제공된다")
     fun internalMetrics() {
         Steps.step("When 실제 DB 읽기와 HTTP 요청을 수행") { service.dashboard();call("GET","/api/v1/public/investment-status") }
         Steps.step("Then 내부 수집 주소에서 운영 지표를 조회할 수 있다") {
@@ -145,7 +141,7 @@ class ApiIntegrationTest {
     private fun concurrent(inputs: List<Pair<Int,Int>>): List<String> { val pool=Executors.newFixedThreadPool(8);val gate=CountDownLatch(1);try { val fs=inputs.map { (team,amount)->pool.submit<String>{gate.await();try{service.create("inv_001",UUID.randomUUID().toString(),InvestmentInput(team,amount));"SUCCESS"}catch(e: ApiException){e.code}} };Steps.step("When 독립 스레드에서 동시에 투자 요청"){gate.countDown()};return fs.map{it.get(20,TimeUnit.SECONDS)} } finally {pool.shutdownNow()} }
     @Test @DisplayName("같은 요청 키 동시 전송 20회 → 같은 영수증과 한 건 차감") fun concurrentSameKey() { login();val key=UUID.randomUUID().toString();val pool=Executors.newFixedThreadPool(8);try { val fs=(1..20).map { pool.submit<InvestmentReceipt>{service.create("inv_001",key,InvestmentInput(2,700000))} };val receipts=fs.map{it.get(20,TimeUnit.SECONDS)};assertThat(receipts.map{it.investment.investmentId}.distinct()).hasSize(1);assertThat(service.investor("inv_001").balance).isEqualTo(300000);assertThat(service.history("inv_001").count).isEqualTo(1) } finally {pool.shutdownNow()} }
     @Test @DisplayName("거래 저장 중 실패하면 차감·거래·버전·요청 결과가 모두 롤백된다") fun atomicRollback() {
-        login();db.jdbc.execute("CREATE TRIGGER fail_investment BEFORE INSERT ON investments BEGIN SELECT RAISE(ABORT,'test fault'); END")
+        login();db.jdbc.execute(if(db.mysql) "CREATE TRIGGER fail_investment BEFORE INSERT ON investments FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='test fault'" else "CREATE TRIGGER fail_investment BEFORE INSERT ON investments BEGIN SELECT RAISE(ABORT,'test fault'); END")
         try { val key=UUID.randomUUID().toString();Steps.step("When 차감 이후 거래 INSERT를 강제로 실패시킨다"){failure(invest(2,700000,key),503,"SERVICE_UNAVAILABLE")};Steps.step("Then 잔액 100만원·거래 0·버전 0·결과 기록 0"){assertThat(service.investor("inv_001").balance).isEqualTo(1000000);assertThat(service.history("inv_001").count).isZero();assertThat(service.dashboard().snapshotVersion).isZero();assertThat(db.jdbc.queryForObject("SELECT COUNT(*) FROM requests",Int::class.java)).isZero()} } finally {db.jdbc.execute("DROP TRIGGER fail_investment")}
     }
     @Test @DisplayName("DB 유니크 제약이 서비스 우회 중복 거래도 차단한다") fun databaseConstraint() { login();invest(2,100000);assertThatThrownBy { db.jdbc.update("INSERT INTO investments VALUES('duplicate','inv_001',2,100000,?,800000,2)",clock.instant().toString()) }.isInstanceOf(org.springframework.dao.DataAccessException::class.java);assertThat(service.history("inv_001").count).isEqualTo(1) }
@@ -266,7 +262,7 @@ class ApiIntegrationTest {
         }
     }
     @Test @DisplayName("상태 저장 실패는 전체 롤백하고 재시도할 수 있다") fun controlRollback() {
-        login("admin","4821");db.jdbc.execute("CREATE TRIGGER fail_control BEFORE UPDATE ON investment_control BEGIN SELECT RAISE(ABORT,'test control failure'); END")
+        login("admin","4821");db.jdbc.execute(if(db.mysql) "CREATE TRIGGER fail_control BEFORE UPDATE ON investment_control FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='test control failure'" else "CREATE TRIGGER fail_control BEFORE UPDATE ON investment_control BEGIN SELECT RAISE(ABORT,'test control failure'); END")
         try {
             Steps.step("When DB가 중지 저장을 거절") { failure(setMode("PAUSED"),503,"SERVICE_UNAVAILABLE") }
             Steps.step("Then RUNNING·버전 0·시각 null 유지") { assertThat(service.investmentStatus()).isEqualTo(InvestmentStatus(InvestmentMode.RUNNING,0,null)) }
@@ -301,4 +297,26 @@ class ApiIntegrationTest {
         Steps.step("Then 초기 RUNNING 보존") { assertThat(service.investmentStatus().status).isEqualTo(InvestmentMode.RUNNING) }
     }
 
+}
+
+@DisplayName("통합 테스트 · 실제 SQLite와 HTTP 컨트롤러")
+class ApiIntegrationTest: ApiContractIntegrationTest() {
+    companion object {
+        private val file=Files.createTempFile("tooja-integration-",".db")
+        @JvmStatic @DynamicPropertySource fun properties(r: DynamicPropertyRegistry) {
+            r.add("spring.datasource.url") { "jdbc:sqlite:$file" }
+        }
+    }
+}
+
+@ActiveProfiles("test","mysql")
+@DisplayName("통합 테스트 · 실제 MySQL과 HTTP 컨트롤러")
+class MySqlApiIntegrationTest: ApiContractIntegrationTest() {
+    companion object {
+        @JvmStatic @DynamicPropertySource fun properties(r: DynamicPropertyRegistry) {
+            r.add("spring.datasource.url") { System.getenv("TEST_MYSQL_URL") ?: "jdbc:mysql://localhost:13306/tooja_test?sslMode=REQUIRED" }
+            r.add("spring.datasource.username") { System.getenv("TEST_MYSQL_USERNAME") ?: "root" }
+            r.add("spring.datasource.password") { System.getenv("TEST_MYSQL_PASSWORD") ?: "local-test-only" }
+        }
+    }
 }

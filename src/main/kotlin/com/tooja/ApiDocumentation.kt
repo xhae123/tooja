@@ -19,15 +19,16 @@ class ApiDocumentation {
     @Bean fun strictTypes()=Jackson2ObjectMapperBuilderCustomizer { it.featuresToDisable(MapperFeature.ALLOW_COERCION_OF_SCALARS); it.featuresToEnable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_NUMBERS_FOR_ENUMS); it.postConfigurer { mapper ->
         listOf(com.fasterxml.jackson.databind.cfg.CoercionInputShape.Integer,com.fasterxml.jackson.databind.cfg.CoercionInputShape.Float,com.fasterxml.jackson.databind.cfg.CoercionInputShape.Boolean).forEach { shape -> mapper.coercionConfigFor(String::class.java).setCoercion(shape,com.fasterxml.jackson.databind.cfg.CoercionAction.Fail) }
     } }
-    @Bean fun openApi(): OpenAPI = OpenAPI().servers(listOf(io.swagger.v3.oas.models.servers.Server().url("/").description("문서를 연 주소와 같은 출처에서 호출해요."))).info(Info().title("1호선톤 가상 투자 API").version("0.1.0").description("프런트엔드·기획자 연동 문서. 컨트롤러와 DTO에서 자동 생성합니다. 금액은 원 단위 정수, 시간은 UTC입니다. 인증은 독립 DB 세션이며 두 역할 모두 48시간·동시 접속을 허용합니다. 관리자는 전체 투자를 중지·재개할 수 있습니다. 투자 취소·수정, 자동 감점과 결과 동결은 제공하지 않습니다.\n\nPOST·PATCH·DELETE는 허용 Origin과 해당 역할의 X-CSRF-Token이 필요합니다. 브라우저는 웹과 API가 같은 scheme·host·port인 동일 출처에서 호출합니다. 세션 쿠키는 HttpOnly이므로 JavaScript로 읽지 않습니다. fetch는 credentials: \"same-origin\"으로 호출하세요. 읽기 API에는 CSRF가 필요 없습니다. 오류 검사는 인증 → 서버 요청 제한 → 쿼리 키·중복 → DELETE 본문 → CSRF → 입력 바인딩·검증 → 도메인 검증 순이며 첫 실패를 반환합니다. 도메인 전 바인딩·검증은 Spring 처리 순서를 따릅니다. 저장소·시스템 예외는 실행 중 발생할 수 있습니다. 로그인은 서버 IP 제한 없이 브라우저 localStorage 제한을 사용합니다. 테스트 SSR 화면은 /login, /admin/login, /dashboard에서 확인합니다."))
+    @Bean fun openApi(): OpenAPI = OpenAPI().servers(listOf(io.swagger.v3.oas.models.servers.Server().url("/").description("문서를 연 주소와 같은 출처에서 호출해요."))).info(Info().title("1호선톤 가상 투자 API").version("0.1.0").description("프런트엔드·기획자 연동 문서. 컨트롤러와 DTO에서 자동 생성합니다. 금액은 원 단위 정수, 시간은 UTC입니다. 인증은 독립 DB 세션이며 두 역할 모두 48시간·동시 접속을 허용합니다. 관리자는 전체 투자를 중지·재개할 수 있습니다. 투자 취소·수정, 자동 감점과 결과 동결은 제공하지 않습니다.\n\nPOST·PATCH·DELETE는 허용 Origin과 해당 역할의 X-CSRF-Token이 필요합니다. 브라우저는 웹과 API가 같은 scheme·host·port인 동일 출처에서 호출합니다. 세션 쿠키는 HttpOnly이므로 JavaScript로 읽지 않습니다. fetch는 credentials: \"same-origin\"으로 호출하세요. 읽기 API에는 CSRF가 필요 없습니다. 오류 검사는 WAF 보안·IP 요청 제한 → 쓰기 본문 크기 → 인증 → 서버 요청 제한 → 쿼리 키·중복 → DELETE 본문 → CSRF → 입력 바인딩·검증 → 도메인 검증 순이며 첫 실패를 반환합니다. 도메인 전 바인딩·검증은 Spring 처리 순서를 따릅니다. 저장소·시스템 예외는 실행 중 발생할 수 있습니다. 로그인 화면은 브라우저 localStorage 제한을 사용합니다. 운영 WAF는 로그인도 포함하여 IP당 60초 동안 30,000건을 초과하면 60초 제한합니다. 테스트 SSR 화면은 /login, /admin/login, /dashboard에서 확인합니다."))
         .schemaRequirement("InvestorSession",SecurityScheme().type(SecurityScheme.Type.APIKEY).`in`(SecurityScheme.In.COOKIE).name("investor_session"))
         .schemaRequirement("AdminSession",SecurityScheme().type(SecurityScheme.Type.APIKEY).`in`(SecurityScheme.In.COOKIE).name("admin_session"))
     @Bean fun responseContracts()=OpenApiCustomizer { api ->
         io.swagger.v3.core.converter.ModelConverters.getInstance().read(ApiError::class.java).forEach { (name,schema) -> api.components.addSchemas(name,schema) }
         val conditions=mapOf(
+            "REQUEST_BODY_TOO_LARGE" to "POST·PATCH·DELETE의 Content-Length가 1,048,576바이트를 초과함 OR 길이가 없는 본문을 실제로 읽은 크기가 1,048,576바이트를 초과함. 인증·CSRF 검사 전에 거절해요.",
             "SESSION_EXPIRED" to "이 API의 역할 세션이 유효하지 않음 AND (해당 역할 쿠키가 있거나 반대 역할의 유효 세션도 없음). 로그인 화면으로 이동.",
             "FORBIDDEN" to "필요한 세션 쿠키 없음 AND 반대 역할로만 로그인함, 또는 요구 역할의 계정이 비활성 상태임.",
-            "RATE_LIMITED" to "직전 60초 내 통과 요청이 보호 API는 역할+계정당 180회, 공개 API는 IP당 300회 이상. 로그인·CSRF 준비에는 이 서버 제한을 적용하지 않음.",
+            "RATE_LIMITED" to "직전 60초 내 통과 요청이 보호 API는 역할+계정당 180회, 공개 API는 서버 연결 주소당 30,000회 이상. 운영 WAF는 클라이언트 IP당 60초 동안 30,000건을 초과하면 60초 제한. 로그인·CSRF 준비에는 이 서버 제한을 적용하지 않음.",
             "CSRF_INVALID" to "Origin이 설정된 웹 출처와 다름/누락 OR X-CSRF-Token이 현재 역할의 세션·로그인 준비 컨텍스트와 다름/누락/만료.",
             "INVALID_REQUEST" to "본문이 없거나 JSON 객체로 파싱할 수 없음 OR 필수 문자열 필드(code/alias/status) 누락/null OR 미정의 본문 필드 존재 OR 필드 타입 불일치 OR 지원하지 않는 Content-Type.",
             "VALIDATION_FAILED" to "필수 헤더 누락, 잘못된 UUID v4, 금액 범위·10만원 단위 위반, 별칭 규칙 위반, 쿼리 중복·미정의 키, 또는 선택 필터가 전달됨 AND 허용값이 아님.",
@@ -63,6 +64,7 @@ class ApiDocumentation {
             if(!path.startsWith("/api/v1/")) return@forEach
             val id=op.operationId
             val exampleMessages=mapOf(
+                "REQUEST_BODY_TOO_LARGE" to "요청 본문은 1MiB 이하여야 합니다.",
                 "SESSION_EXPIRED" to "다시 로그인해 주세요.", "FORBIDDEN" to "이 역할의 로그인 권한이 필요합니다.",
                 "RATE_LIMITED" to "요청이 많습니다. 잠시 후 다시 시도해 주세요.", "CSRF_INVALID" to "인증 준비 정보가 만료되었거나 일치하지 않습니다.",
                 "INVALID_REQUEST" to "JSON 본문·타입·필드 구성을 확인해 주세요.", "VALIDATION_FAILED" to "입력값을 확인해 주세요.",
@@ -117,6 +119,7 @@ class ApiDocumentation {
             }))
             val protected= !op.security.isNullOrEmpty();val errors=linkedMapOf<String,MutableList<String>>()
             fun add(status: String,vararg codes: String) { errors.getOrPut(status){mutableListOf()}.addAll(codes) }
+            if(method.name in listOf("POST","PATCH","DELETE")) add("413","REQUEST_BODY_TOO_LARGE")
             if(protected){add("401","SESSION_EXPIRED");add("403","FORBIDDEN");add("429","RATE_LIMITED")}
             if(id in listOf("getDashboard","getInvestmentStatus"))add("429","RATE_LIMITED")
             if(method.name in listOf("POST","PATCH","DELETE")) { add("403","CSRF_INVALID");add("400","INVALID_REQUEST");op.addParametersItem(io.swagger.v3.oas.models.parameters.Parameter().`in`("header").name("X-CSRF-Token").required(true).description("같은 역할의 로그인 또는 로그인 준비 API에서 받은 csrfToken").schema(Schema<String>().type("string"))) }

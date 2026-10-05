@@ -6,7 +6,7 @@ export RELEASE_ID="$(basename "$RELEASE_DIR")"
 exec 9>"$TOOJA_HOME/deploy.lock"
 flock -w 300 9
 previous=$(readlink -f "$TOOJA_HOME/current" || true)
-compose() { docker compose -p tooja -f "$RELEASE_DIR/compose.yaml" "$@"; }
+compose() { docker compose --env-file "$TOOJA_HOME/runtime.env" -p tooja -f "$RELEASE_DIR/compose.yaml" "$@"; }
 rollback() {
   trap - ERR
   printf 'Deployment failed; restoring the previous application release.\n' >&2
@@ -24,7 +24,7 @@ if ! docker buildx inspect tooja-release >/dev/null 2>&1; then
   docker buildx create --name tooja-release --driver docker-container --driver-opt default-load=true,memory=512m
 fi
 compose build --builder tooja-release --pull
-if [ -f "$TOOJA_HOME/data/tooja.db" ]; then
+if ! grep -q '^APP_PROFILES=.*mysql' "$TOOJA_HOME/runtime.env" && [ -f "$TOOJA_HOME/data/tooja.db" ]; then
   python3 - "$TOOJA_HOME" "$RELEASE_ID" <<'PY'
 import sqlite3,sys
 from pathlib import Path
@@ -51,7 +51,12 @@ assert u.path in ('','/') and not u.query and not u.fragment
 print(u.hostname, u.port or (443 if u.scheme=='https' else 80))
 PYORIGIN
 )
-edge_curl() { curl --fail --resolve "$edge_host:$edge_port:127.0.0.1" "$@"; }
+edge_ip=127.0.0.1
+if grep -q '^EDGE_MODE=oci-lb$' "$TOOJA_HOME/runtime.env"; then
+  edge_ip=$(sed -n 's/^LB_IP=//p' "$TOOJA_HOME/runtime.env")
+  [ -n "$edge_ip" ]
+fi
+edge_curl() { curl --fail --resolve "$edge_host:$edge_port:$edge_ip" "$@"; }
 edge_curl --retry 5 --retry-delay 2 "$origin/actuator/health"
 edge_curl "$origin/v3/api-docs" -o "$RELEASE_DIR/reports/openapi.json"
 edge_curl "$origin/reports/allure/index.html" -o /dev/null

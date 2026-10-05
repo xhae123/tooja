@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap
 annotation class Access(val role: String)
 
 @Component
+@org.springframework.core.annotation.Order(-100)
 class RequestIds: OncePerRequestFilter() {
     override fun doFilterInternal(req: HttpServletRequest,res: HttpServletResponse,chain: FilterChain) {
         val id="req_${UUID.randomUUID()}";req.setAttribute("requestId",id);res.setHeader("X-Request-ID",id);chain.doFilter(req,res)
@@ -46,7 +47,12 @@ class RateLimits(private val clock: Clock) {
     fun clear()=buckets.clear()
 }
 @Configuration
-class WebConfig(private val auth: AuthService,private val rates: RateLimits): WebMvcConfigurer {
+class WebConfig(private val auth: AuthService,private val rates: RateLimits,
+    @org.springframework.beans.factory.annotation.Value("\${app.acme-root:}") private val acmeRoot: String): WebMvcConfigurer {
+    override fun addResourceHandlers(registry: org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry) {
+        if(acmeRoot.isNotBlank()) registry.addResourceHandler("/.well-known/acme-challenge/**")
+            .addResourceLocations(java.nio.file.Path.of(acmeRoot,".well-known","acme-challenge").toUri().toString().trimEnd('/')+"/")
+    }
     override fun addInterceptors(registry: InterceptorRegistry) {
         registry.addInterceptor(object: HandlerInterceptor {
             override fun preHandle(req: HttpServletRequest,res: HttpServletResponse,handler: Any): Boolean {
@@ -54,7 +60,7 @@ class WebConfig(private val auth: AuthService,private val rates: RateLimits): We
                 val access=handler.getMethodAnnotation(Access::class.java) ?: handler.beanType.getAnnotation(Access::class.java)
                 val role=if(req.requestURI.startsWith("/api/v1/admin/"))"admin" else "investor"
                 if(access!=null) { val session=auth.require(access.role,req);req.setAttribute("principal",session);rates.check("${access.role}:${session.accountId}",180) }
-                else if(req.requestURI.startsWith("/api/v1/public/")) rates.check("public:${req.remoteAddr}",300)
+                else if(req.requestURI.startsWith("/api/v1/public/")) rates.check("public:${req.remoteAddr}",30000)
                 val allowed=if(req.requestURI=="/api/v1/admin/investors") setOf("q","teamId","kind","spendingStatus") else emptySet()
                 if(req.parameterMap.keys.any { it !in allowed } || req.parameterMap.values.any { it.size!=1 }) throw ApiException(422,"VALIDATION_FAILED","정의되지 않거나 중복된 쿼리 파라미터입니다.",mapOf("fieldErrors" to listOf(mapOf("field" to "query","reason" to "UNKNOWN_OR_DUPLICATE","message" to "허용된 필터를 한 번씩만 보내세요."))))
                 if(req.method in listOf("POST","PATCH","DELETE")) {

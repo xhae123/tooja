@@ -16,7 +16,7 @@ import java.sql.SQLException
 
 @DisplayName("단위 테스트 · 모니터링 개인정보 보호와 실패 집계")
 class TelemetryTest {
-    @Test @DisplayName("Given SQL과 코드가 담긴 예외 When 오류를 기록 Then 민감한 원문은 빼고 추적 ID와 SQLite 오류 번호만 남긴다")
+    @Test @DisplayName("Given SQL과 코드가 담긴 예외 When 오류를 기록 Then 민감한 원문은 빼고 추적 ID와 SQL 오류 번호만 남긴다")
     fun privateError() {
         val registry=SimpleMeterRegistry();val telemetry=Telemetry(registry,ObjectMapper())
         val logger=LoggerFactory.getLogger("com.tooja.telemetry") as Logger
@@ -28,7 +28,7 @@ class TelemetryTest {
             }
             telemetry.error(IllegalStateException("SQL secret-code",SQLException("secret-cookie",null,5)),req,500,"INTERNAL_ERROR")
             val event=appender.list.single()
-            assertThat(event.formattedMessage).contains("req_test","/api/{id}","sqliteErrorCode",":5")
+            assertThat(event.formattedMessage).contains("req_test","/api/{id}","sqlErrorCode",":5")
                 .doesNotContain("secret-code","secret-cookie","private-user")
             assertThat(event.throwableProxy).isNull()
             assertThat(registry.get("tooja.server.errors").tag("status","500").counter().count()).isEqualTo(1.0)

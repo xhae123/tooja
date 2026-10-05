@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-init-sql: SELECT 1
+      maximum-pool-size: 8
+      connection-timeout: 5000
+      validation-timeout: 2000
+  flyway:
+    enabled: true
+    locations: classpath:db/mysql
+    clean-disabled: true

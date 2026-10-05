@@ -33,7 +33,8 @@ class AuthService(private val db: Database, private val secrets: Secrets, privat
     fun csrf(role: String,request: HttpServletRequest,response: HttpServletResponse): Csrf {
         session(role,request)?.let { return Csrf(it.csrf) }
         val raw=secrets.token();val token=secrets.token(); val expiry=clock.instant().plusSeconds(600)
-        db.write { db.jdbc.update("DELETE FROM contexts WHERE julianday(expires_at)<=julianday(?)",clock.instant().toString()); db.jdbc.update("INSERT INTO contexts VALUES(?,?,?,?)",secrets.hash(raw),role,token,expiry.toString());true }
+        db.write { val expired=db.jdbc.queryForList("SELECT token_hash,expires_at FROM contexts").filter { !clock.instant().isBefore(Instant.parse(it["expires_at"].toString())) }
+            expired.forEach { db.jdbc.update("DELETE FROM contexts WHERE token_hash=?",it["token_hash"]) }; db.jdbc.update("INSERT INTO contexts VALUES(?,?,?,?)",secrets.hash(raw),role,token,expiry.toString());true }
         cookie(response,"${role}_csrf_context",raw,600,"/api/v1/$role")
         return Csrf(token)
     }
@@ -43,7 +44,8 @@ class AuthService(private val db: Database, private val secrets: Secrets, privat
         val current=session(role,request)
         val expected=current?.csrf ?: run {
             val raw=request.cookies?.firstOrNull { it.name=="${role}_csrf_context" }?.value ?: throw ApiException(403,"CSRF_INVALID","인증 준비 정보가 없습니다.")
-            db.jdbc.queryForList("SELECT csrf FROM contexts WHERE token_hash=? AND role=? AND julianday(expires_at)>julianday(?)",secrets.hash(raw),role,clock.instant().toString()).firstOrNull()?.get("csrf")?.toString()
+            db.jdbc.queryForList("SELECT csrf,expires_at FROM contexts WHERE token_hash=? AND role=?",secrets.hash(raw),role).firstOrNull()
+                ?.takeIf { clock.instant().isBefore(Instant.parse(it["expires_at"].toString())) }?.get("csrf")?.toString()
         }
         if(expected==null || !java.security.MessageDigest.isEqual(expected.toByteArray(),provided.toByteArray())) throw ApiException(403,"CSRF_INVALID","인증 준비 정보가 만료되었거나 일치하지 않습니다.")
     }
