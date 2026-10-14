@@ -67,7 +67,7 @@ class AdminController(private val service: InvestmentService) {
     fun overview(): Overview=service.overview()
     @GetMapping("/investors") @Operation(operationId="listInvestors",summary="[관리자] 투자자 검색·필터",description=OperationDescriptions.LIST_INVESTORS)
     fun list(@RequestParam(required=false) q: String?,@RequestParam(required=false) teamId: Int?,@RequestParam(required=false) kind: String?,@RequestParam(required=false) spendingStatus: String?): InvestorList {
-        if(q!=null && q.length>100 || teamId!=null && teamId !in 1..20 || kind!=null && kind !in listOf("PARTICIPANT","STAFF") || spendingStatus!=null && spendingStatus !in listOf("NOT_ACTIVATED","UNSPENT","COMPLETED")) throw ApiException(422,"VALIDATION_FAILED","전달한 필터 값이 허용 범위를 벗어났습니다.")
+        if(q!=null && q.length>100 || teamId!=null && teamId !in 1..20 || kind!=null && kind !in listOf("PARTICIPANT","STAFF") || spendingStatus!=null && spendingStatus !in listOf("UNSPENT","COMPLETED")) throw ApiException(422,"VALIDATION_FAILED","전달한 필터 값이 허용 범위를 벗어났습니다.")
         return service.list(q,teamId,kind,spendingStatus)
     }
     @GetMapping("/investors/{investorId}") @Operation(operationId="getInvestorDetail",summary="[관리자] 투자자 잔액·거래 조회",description=OperationDescriptions.GET_INVESTOR)

@@ -5,7 +5,7 @@ import jakarta.validation.constraints.*
 import java.time.Instant
 
 @Schema(description="참가자 또는 운영팀 투자자. 관리자는 투자금 지급 대상이 아닙니다.")
-data class Investor(val investorId: String, val alias: String, val kind: String, val teamId: Int?, val hasLoggedIn: Boolean,
+data class Investor(val investorId: String, val alias: String, val kind: String, val teamId: Int?,
     val issuedAmount: Int, val investedAmount: Int, val balance: Int, val spendingStatus: String)
 data class Admin(val adminId: String, val role: String = "ADMIN")
 data class Csrf(val csrfToken: String)
@@ -29,7 +29,7 @@ data class Pending(val status: String = "PROCESSING", val requestKey: String)
 data class RequestResult(val status: String, val requestKey: String, val result: InvestmentReceipt? = null, val originalHttpStatus: Int? = null, val error: ErrorBody? = null)
 data class ErrorBody(val code: String, val message: String, val details: Map<String,Any> = emptyMap())
 data class ApiError(val error: ErrorBody, val requestId: String)
-data class Metrics(val registeredInvestorCount: Int, val activatedInvestorCount: Int, val notActivatedCount: Int, val investedInvestorCount: Int,
+data class Metrics(val registeredInvestorCount: Int, val investedInvestorCount: Int,
     val totalIssuedAmount: Long, val totalInvestedAmount: Long, val totalBalance: Long, val completedCount: Int, val unspentCount: Int)
 data class Overview(val total: Metrics, val participants: Metrics, val staff: Metrics, val asOf: Instant, val snapshotVersion: Long, val investmentStatus: InvestmentStatus)
 data class InvestorList(val items: List<Investor>, val count: Int, val asOf: Instant)

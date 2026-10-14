@@ -55,10 +55,6 @@ class AuthService(private val db: Database, private val secrets: Secrets, privat
             val a=db.jdbc.queryForList("SELECT * FROM accounts WHERE code_hash=? AND role=? AND deleted_at IS NULL",secrets.codeHash(code),role.uppercase()).firstOrNull()
                 ?: throw ApiException(401,"AUTHENTICATION_FAILED","코드가 올바르지 않습니다.")
             val id=a["id"].toString()
-            if(role=="investor" && (a["activated"] as Number).toInt()==0) {
-                db.jdbc.update("INSERT INTO grants VALUES(?,1000000,?)",id,clock.instant().toString())
-                db.jdbc.update("UPDATE accounts SET activated=1,balance=1000000 WHERE id=?",id)
-            }
             request.cookies?.firstOrNull { it.name=="${role}_session" }?.let { db.jdbc.update("UPDATE sessions SET revoked_at=? WHERE token_hash=?",clock.instant().toString(),secrets.hash(it.value)) }
             request.cookies?.firstOrNull { it.name=="${role}_csrf_context" }?.let { db.jdbc.update("DELETE FROM contexts WHERE token_hash=?",secrets.hash(it.value)) }
             db.jdbc.update("INSERT INTO sessions VALUES(?,?,?,?,?,NULL)",secrets.hash(raw),role.uppercase(),id,token,expiry.toString())

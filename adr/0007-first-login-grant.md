@@ -1,4 +1,6 @@
-# ADR 0007: 투자금은 최초 로그인 성공 때 한 번 지급한다
+# ADR 0007: 투자금은 최초 로그인 성공 때 한 번 지급한다 (대체됨)
+
+현재 상태: 2026-10-14에 [ADR 0032](0032-registration-grant.md)로 대체됐습니다. 아래 내용은 당시 결정의 기록입니다.
 
 기록일: 2026-10-05 · 결정 출처: 사용자 결정
 
@@ -24,7 +26,7 @@
 
 ## 현재 상태와 구현 근거
 
-구현됨. 직접 더미 계정을 넣을 때도 임의 활성화·지급하지 않습니다.
+과거 정책입니다. 현재는 투자자 등록과 함께 지급합니다.
 
 - [src/main/kotlin/com/tooja/AuthService.kt](../src/main/kotlin/com/tooja/AuthService.kt)
 - [src/main/kotlin/com/tooja/InvestmentService.kt](../src/main/kotlin/com/tooja/InvestmentService.kt)

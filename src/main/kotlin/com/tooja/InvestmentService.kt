@@ -19,8 +19,8 @@ class InvestmentService(private val db: Database, private val clock: Clock) {
         control()
     }
     private fun investorRow(r: Map<String,Any?>): Investor {
-        val activated=(r["activated"] as Number).toInt()==1;val balance=(r["balance"] as Number).toInt()
-        return Investor(r["id"].toString(),r["alias"].toString(),r["kind"].toString(),(r["team_id"] as Number?)?.toInt(),activated,if(activated)1000000 else 0,if(activated)1000000-balance else 0,balance,if(!activated)"NOT_ACTIVATED" else if(balance==0)"COMPLETED" else "UNSPENT")
+        val balance=(r["balance"] as Number).toInt()
+        return Investor(r["id"].toString(),r["alias"].toString(),r["kind"].toString(),(r["team_id"] as Number?)?.toInt(),1000000,1000000-balance,balance,if(balance==0)"COMPLETED" else "UNSPENT")
     }
     fun investor(id: String): Investor = db.jdbc.queryForList("SELECT * FROM accounts WHERE id=? AND role='INVESTOR' AND deleted_at IS NULL",id).firstOrNull()?.let(::investorRow)
         ?: throw ApiException(404,"RESOURCE_NOT_FOUND","투자자를 찾을 수 없습니다.")
@@ -93,7 +93,7 @@ class InvestmentService(private val db: Database, private val clock: Clock) {
         };InvestorList(items,items.size,clock.instant())
     }
     fun updateAlias(id: String,alias: String): Investor = db.write { investor(id);db.jdbc.update("UPDATE accounts SET alias=? WHERE id=?",alias,id);investor(id) }
-    private fun metrics(items: List<Investor>): Metrics = Metrics(items.size,items.count { it.hasLoggedIn },items.count { !it.hasLoggedIn },items.count { it.investedAmount>0 },items.sumOf { it.issuedAmount.toLong() },items.sumOf { it.investedAmount.toLong() },items.sumOf { it.balance.toLong() },items.count { it.spendingStatus=="COMPLETED" },items.count { it.spendingStatus=="UNSPENT" })
+    private fun metrics(items: List<Investor>): Metrics = Metrics(items.size,items.count { it.investedAmount>0 },items.sumOf { it.issuedAmount.toLong() },items.sumOf { it.investedAmount.toLong() },items.sumOf { it.balance.toLong() },items.count { it.spendingStatus=="COMPLETED" },items.count { it.spendingStatus=="UNSPENT" })
     fun overview(): Overview = db.read { val all=list(null,null,null,null).items;Overview(metrics(all),metrics(all.filter{it.kind=="PARTICIPANT"}),metrics(all.filter{it.kind=="STAFF"}),clock.instant(),db.jdbc.queryForObject("SELECT version FROM metadata WHERE id=1",Long::class.java)!!,control()) }
     fun dashboard(): Dashboard = db.read {
         val rows=db.jdbc.queryForList("SELECT t.id,t.name,COALESCE(SUM(i.amount),0) AS amount FROM teams t LEFT JOIN investments i ON i.team_id=t.id GROUP BY t.id,t.name").map { Triple((it["id"] as Number).toInt(),it["name"].toString(),(it["amount"] as Number).toLong()) }

@@ -10,7 +10,7 @@
 - [0004 투자자와 관리자는 별도 세션 쿠키를 사용한다](0004-separate-role-cookies.md)
 - [0005 두 역할 모두 재사용하는 숫자 4자리 코드로 로그인한다](0005-reusable-four-digit-codes.md)
 - [0006 쿠키 인증의 쓰기 요청에 CSRF·Origin 검증을 적용한다](0006-csrf-and-same-origin.md)
-- [0007 투자금은 최초 로그인 성공 때 한 번 지급한다](0007-first-login-grant.md)
+- [0007 최초 로그인 지급 (0032로 대체)](0007-first-login-grant.md)
 - [0008 투자 확정의 모든 원장 변경을 하나의 트랜잭션으로 묶는다](0008-atomic-investment.md)
 - [0009 SQLite 쓰기를 한 JVM 안에서 직렬화한다](0009-single-jvm-write-lock.md)
 - [0010 투자는 동기 확정하고 요청 키로 중복 차감을 막는다](0010-synchronous-idempotent-investment.md)
@@ -40,3 +40,5 @@
 - [ADR 0029: 공유 진입점을 OCI LB와 WAF로 바꿔요](0029-managed-lb-waf.md)
 - [ADR 0030: WAF는 IP별로 여유 있게 요청을 제한해요](0030-waf-per-ip-limit.md)
 - [ADR 0031: 인프라 기록은 oci-man 안에 통합해요](0031-infra-skill-records.md)
+
+- [0032 등록 시 100만원 지급과 소진 상태 간소화](0032-registration-grant.md)

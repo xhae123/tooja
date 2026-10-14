@@ -18,7 +18,7 @@ import kotlin.concurrent.withLock
 class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private val secrets: Secrets, private val env: Environment,
     @Value("\${app.provisioning-mode:required}") private val provisioningMode: String,
     @Value("\${app.accounts-csv}") private val accountsFile: String, @Value("\${app.teams-csv}") private val teamsFile: String,
-    private val telemetry: Telemetry? = null) {
+    private val telemetry: Telemetry? = null, private val clock: Clock = Clock.systemUTC()) {
     private val tx = TransactionTemplate(tm)
     private val writeLock = ReentrantLock(true)
     fun <T:Any> write(block: () -> T): T = measure("write") { writeLock.withLock { tx.execute { block() }!! } }
@@ -32,7 +32,7 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
         jdbc.execute("PRAGMA busy_timeout=10000")
         listOf(
             "CREATE TABLE IF NOT EXISTS teams(id INTEGER PRIMARY KEY CHECK(id BETWEEN 1 AND 20), name TEXT NOT NULL, description TEXT NOT NULL)",
-            "CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, code_hash TEXT NOT NULL UNIQUE, role TEXT NOT NULL CHECK(role IN ('INVESTOR','ADMIN')), kind TEXT CHECK(kind IN ('PARTICIPANT','STAFF')), team_id INTEGER REFERENCES teams(id), alias TEXT NOT NULL, activated INTEGER NOT NULL DEFAULT 0 CHECK(activated IN (0,1)), balance INTEGER NOT NULL DEFAULT 0 CHECK(balance BETWEEN 0 AND 1000000), deleted_at TEXT, CHECK((role='ADMIN' AND kind IS NULL AND team_id IS NULL) OR (role='INVESTOR' AND kind IS NOT NULL AND ((kind='PARTICIPANT' AND team_id IS NOT NULL) OR (kind='STAFF' AND team_id IS NULL)))))",
+            "CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, code_hash TEXT NOT NULL UNIQUE, role TEXT NOT NULL CHECK(role IN ('INVESTOR','ADMIN')), kind TEXT CHECK(kind IN ('PARTICIPANT','STAFF')), team_id INTEGER REFERENCES teams(id), alias TEXT NOT NULL, balance INTEGER NOT NULL DEFAULT 0 CHECK(balance BETWEEN 0 AND 1000000), deleted_at TEXT, CHECK((role='ADMIN' AND kind IS NULL AND team_id IS NULL) OR (role='INVESTOR' AND kind IS NOT NULL AND ((kind='PARTICIPANT' AND team_id IS NOT NULL) OR (kind='STAFF' AND team_id IS NULL)))))",
             "CREATE TABLE IF NOT EXISTS grants(account_id TEXT PRIMARY KEY REFERENCES accounts(id), amount INTEGER NOT NULL CHECK(amount=1000000), granted_at TEXT NOT NULL)",
             "CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY, role TEXT NOT NULL, account_id TEXT REFERENCES accounts(id), csrf TEXT NOT NULL, expires_at TEXT NOT NULL, revoked_at TEXT)",
             "CREATE TABLE IF NOT EXISTS contexts(token_hash TEXT PRIMARY KEY, role TEXT NOT NULL, csrf TEXT NOT NULL, expires_at TEXT NOT NULL)",
@@ -50,8 +50,15 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
     fun seedDemo() = write {
         for (id in 1..20) jdbc.update(insertIgnore("INSERT OR IGNORE INTO teams VALUES(?,?,?)"), id,"팀%02d 데모 서비스".format(id),"팀%02d 부스에서 서비스를 체험하고 투자해 보세요.".format(id))
         val fixtures=listOf(listOf("inv_001","0037","INVESTOR","PARTICIPANT",1,"팀01 투자자001"),listOf("inv_002","0038","INVESTOR","PARTICIPANT",3,"팀03 투자자002"),listOf("inv_003","0039","INVESTOR","PARTICIPANT",4,"팀04 투자자003"),listOf("inv_004","0040","INVESTOR","PARTICIPANT",5,"팀05 투자자004"),listOf("staff_001","1000","INVESTOR","STAFF",null,"운영팀 투자자001"),listOf("admin_001","4821","ADMIN",null,null,"관리자"))
-        fixtures.forEach { a -> jdbc.update(insertIgnore("INSERT OR IGNORE INTO accounts(id,code_hash,role,kind,team_id,alias) VALUES(?,?,?,?,?,?)"),a[0],secrets.codeHash(a[1] as String),a[2],a[3],a[4],a[5]) }
+        fixtures.forEach { a -> insertAccount(a[0] as String,a[1] as String,a[2] as String,a[3] as String?,a[4] as Int?,a[5] as String,ignoreExisting=true) }
         true
+    }
+    // Called only inside the provisioning transaction: account and grant either both commit or both roll back.
+    private fun insertAccount(id: String,code: String,role: String,kind: String?,teamId: Int?,alias: String,ignoreExisting: Boolean=false) {
+        val sql="INSERT INTO accounts(id,code_hash,role,kind,team_id,alias,balance) VALUES(?,?,?,?,?,?,?)"
+        val statement=if(ignoreExisting) insertIgnore(sql.replace("INSERT INTO","INSERT OR IGNORE INTO")) else sql
+        val inserted=jdbc.update(statement,id,secrets.codeHash(code),role,kind,teamId,alias,if(role=="INVESTOR")1000000 else 0)
+        if(inserted==1 && role=="INVESTOR") jdbc.update("INSERT INTO grants VALUES(?,1000000,?)",id,clock.instant().toString())
     }
     private fun importProvisioning() {
         if (jdbc.queryForObject("SELECT COUNT(*) FROM teams",Int::class.java)==0) {
@@ -63,7 +70,7 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
                 require(jdbc.queryForObject("SELECT COUNT(*) FROM teams",Int::class.java)==20)
                 Files.readAllLines(Path.of(accountsFile)).drop(1).filter { it.isNotBlank() }.forEach { line ->
                     val p=line.split(',');require(p.size==6 && p[1].matches(Regex("[0-9]{4}")))
-                    jdbc.update("INSERT INTO accounts(id,code_hash,role,kind,team_id,alias) VALUES(?,?,?,?,?,?)",p[0],secrets.codeHash(p[1]),p[2],p[3].ifBlank{null},p[4].ifBlank{null}?.toInt(),p[5])
+                    insertAccount(p[0],p[1],p[2],p[3].ifBlank{null},p[4].ifBlank{null}?.toInt(),p[5])
                 };true
             }
         }
