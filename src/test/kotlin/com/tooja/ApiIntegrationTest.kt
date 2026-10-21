@@ -166,9 +166,22 @@ abstract class ApiContractIntegrationTest {
             assertThat(json(call("GET","/api/v1/admin/investors?kind=STAFF&teamId=1"))["count"].asInt()).isZero()
         }
     }
-    @Test @DisplayName("별칭·ID 검색과 역할·소속 필터는 AND로 조합한다") fun search() { login("admin","4821");val d=json(call("GET","/api/v1/admin/investors?q=inv_001&kind=PARTICIPANT&teamId=1"));assertThat(d["count"].asInt()).isEqualTo(1);assertThat(d["items"][0]["investorId"].asText()).isEqualTo("inv_001") }
-    @Test @DisplayName("관리자는 미로그인 투자자의 별칭도 수정하고 돈은 바꾸지 않는다") fun alias() { login("admin","4821");val r=call("PATCH","/api/v1/admin/investors/inv_001","{\"alias\":\"파란 명찰\"}");assertThat(r.status).isEqualTo(200);assertThat(service.investor("inv_001").alias).isEqualTo("파란 명찰");assertThat(service.investor("inv_001").spendingStatus).isEqualTo("UNSPENT");failure(call("PATCH","/api/v1/admin/investors/inv_001","{\"alias\":\" 바꾼 이름\"}"),422,"VALIDATION_FAILED") }
-    @Test @DisplayName("별칭 수정에 잔액 필드를 끼워 보내면 거절한다") fun noMoneyEdits() { login("admin","4821");failure(call("PATCH","/api/v1/admin/investors/inv_001","{\"alias\":\"이름\",\"balance\":1000000}"),400,"INVALID_REQUEST");assertThat(service.investor("inv_001").balance).isEqualTo(1000000) }
+    @Test @DisplayName("이름·ID 검색과 역할·소속 필터는 AND로 조합한다") fun search() { login("admin","4821");val d=json(call("GET","/api/v1/admin/investors?q=inv_001&kind=PARTICIPANT&teamId=1"));assertThat(d["count"].asInt()).isEqualTo(1);assertThat(d["items"][0]["investorId"].asText()).isEqualTo("inv_001") }
+    @ParameterizedTest(name="삭제한 이름 수정 API는 {0} 본문도 거절한다")
+    @ValueSource(strings=["{\"alias\":\"다른 이름\"}","{\"alias\":\"이름\",\"balance\":0}","{}"])
+    fun nameEditingRemoved(body: String) {
+        Steps.step("Given 사전 등록한 투자자와 관리자 로그인") { login("admin","4821") }
+        val before=service.investor("inv_001")
+        Steps.step("When 삭제된 수정 경로에 PATCH 요청") {
+            failure(call("PATCH","/api/v1/admin/investors/inv_001",body),405,"METHOD_NOT_ALLOWED")
+        }
+        Steps.step("Then 이름·잔액·지급은 그대로이고 상세 조회는 정상") {
+            assertThat(service.investor("inv_001")).isEqualTo(before)
+            val detail=json(call("GET","/api/v1/admin/investors/inv_001"))
+            assertThat(detail["investor"]["alias"].asText()).isEqualTo(before.alias)
+            assertThat(service.overview().total.totalIssuedAmount).isEqualTo(5000000)
+        }
+    }
     @Test @DisplayName("공개 대시보드는 미로그인도 볼 수 있고 개인 정보는 없다") fun publicPrivacy() { val r=call("GET","/api/v1/public/dashboard");assertThat(r.status).isEqualTo(200);val d=json(r);assertThat(d["teams"].size()).isEqualTo(20);assertThat(d.toString()).doesNotContain("investorId","alias","balance","csrf","code");assertThat(d["teams"].map{it["rank"].asInt()}).containsOnly(1) }
     @Test @DisplayName("20개의 동시 로그인도 등록 시 지급액과 잔액을 바꾸지 않는다") fun concurrentGrant() {
         val pool=Executors.newFixedThreadPool(8);val gate=CountDownLatch(1)
@@ -187,8 +200,8 @@ abstract class ApiContractIntegrationTest {
     @Test @DisplayName("본문 없는 로그아웃 계약을 위반하면 400이고 세션은 유지된다") fun logoutBody() { login();failure(call("DELETE","/api/v1/investor/session","{}"),400,"INVALID_REQUEST");assertThat(call("GET","/api/v1/investor/me").status).isEqualTo(200) }
     @Test @DisplayName("투자 요청 키 누락·잘못된 UUID는 입력 오류이고 잔액 불변이다") fun badRequestKey() { login();failure(call("POST","/api/v1/investor/investments","{\"teamId\":2,\"amount\":100000}"),422,"VALIDATION_FAILED");failure(invest(2,100000,"not-a-uuid"),422,"VALIDATION_FAILED");assertThat(service.investor("inv_001").balance).isEqualTo(1000000) }
     @Test @DisplayName("없는 경로는 404, 허용하지 않는 메서드는 405다") fun routingErrors() { failure(call("GET","/api/v1/not-found"),404,"RESOURCE_NOT_FOUND");failure(call("PUT","/api/v1/investor/session","{}"),405,"METHOD_NOT_ALLOWED") }
-    @Test @DisplayName("존재하지 않는 투자자 상세·별칭 수정은 404다") fun unknownInvestor() { login("admin","4821");failure(call("GET","/api/v1/admin/investors/missing"),404,"RESOURCE_NOT_FOUND");failure(call("PATCH","/api/v1/admin/investors/missing","{\"alias\":\"별칭\"}"),404,"RESOURCE_NOT_FOUND") }
-    @Test @DisplayName("컨트롤러에서 생성된 OpenAPI는 합의된 22개 작업과 오류를 담는다") fun generatedSpec() { val r=call("GET","/v3/api-docs");assertThat(r.status).isEqualTo(200);val d=json(r);assertThat(d["servers"][0]["url"].asText()).isEqualTo("/");val paths=d["paths"];assertThat(paths.fields().asSequence().sumOf{it.value.size()}).isEqualTo(22);assertThat(paths["/api/v1/investor/investments"]["post"]["responses"]["409"]["content"]["application/json"]["examples"]["ALREADY_INVESTED"]).isNotNull();assertThat(d["components"]["schemas"]["ApiError"]).isNotNull();assertThat(d["components"]["schemas"]["Investor"]["properties"]["spendingStatus"]["enum"].map{it.asText()}).containsExactly("UNSPENT","COMPLETED");assertThat(d["components"]["schemas"]["Investor"]["properties"].has("hasLoggedIn")).isFalse();assertThat(d["components"]["schemas"]["Metrics"]["properties"].toString()).doesNotContain("activatedInvestorCount","notActivatedCount");assertThat(paths.toString()).doesNotContain("/__test","/event");paths.fields().forEachRemaining { path -> path.value.fields().forEachRemaining { operation -> assertThat(operation.value["description"].asText()).contains("**사용 시점**", "**성공 결과").hasSizeGreaterThan(200) } } }
+    @Test @DisplayName("존재하지 않는 투자자 상세는 404다") fun unknownInvestor() { login("admin","4821");failure(call("GET","/api/v1/admin/investors/missing"),404,"RESOURCE_NOT_FOUND") }
+    @Test @DisplayName("컨트롤러에서 생성된 OpenAPI는 합의된 21개 작업과 오류를 담는다") fun generatedSpec() { val r=call("GET","/v3/api-docs");assertThat(r.status).isEqualTo(200);val d=json(r);assertThat(d["servers"][0]["url"].asText()).isEqualTo("/");val paths=d["paths"];assertThat(paths.fields().asSequence().sumOf{it.value.size()}).isEqualTo(21);assertThat(paths["/api/v1/investor/investments"]["post"]["responses"]["409"]["content"]["application/json"]["examples"]["ALREADY_INVESTED"]).isNotNull();assertThat(d["components"]["schemas"]["ApiError"]).isNotNull();assertThat(paths["/api/v1/admin/investors/{investorId}"].has("patch")).isFalse();assertThat(d["components"]["schemas"].has("AliasInput")).isFalse();assertThat(d["components"]["schemas"]["Investor"]["properties"]["spendingStatus"]["enum"].map{it.asText()}).containsExactly("UNSPENT","COMPLETED");assertThat(d["components"]["schemas"]["Investor"]["properties"].has("hasLoggedIn")).isFalse();assertThat(d["components"]["schemas"]["Metrics"]["properties"].toString()).doesNotContain("activatedInvestorCount","notActivatedCount");assertThat(paths.toString()).doesNotContain("/__test","/event");paths.fields().forEachRemaining { path -> path.value.fields().forEachRemaining { operation -> assertThat(operation.value["description"].asText()).contains("**사용 시점**", "**성공 결과").hasSizeGreaterThan(200) } } }
     private fun setMode(mode: String)=call("PATCH","/api/v1/admin/investment-status","{\"status\":\"$mode\"}")
     private fun unchangedMoney() {
         assertThat(service.investor("inv_001").balance).isEqualTo(1000000)
@@ -257,7 +270,7 @@ abstract class ApiContractIntegrationTest {
             assertThat(db.jdbc.queryForObject("SELECT COUNT(*) FROM requests",Int::class.java)).isEqualTo(1)
         }
     }
-    @Test @DisplayName("중지 중에도 로그인·조회·별칭 수정은 가능하며 등록 지급을 유지한다") fun pausedReadAndLogin() {
+    @Test @DisplayName("중지 중에도 로그인·조회는 가능하며 등록 지급을 유지한다") fun pausedReadAndLogin() {
         login("admin","4821");setMode("PAUSED")
         val first=Steps.step("When 중지 중 투자자가 최초 로그인") { login() }
         Steps.step("Then 등록 시 지급된 100만원 유지, 조회 API 정상, 응답에서 PAUSED 확인") {
@@ -266,7 +279,6 @@ abstract class ApiContractIntegrationTest {
             assertThat(json(call("GET","/api/v1/investor/teams"))["investmentStatus"]["status"].asText()).isEqualTo("PAUSED")
             assertThat(json(call("GET","/api/v1/investor/teams/2"))["investmentStatus"]["status"].asText()).isEqualTo("PAUSED")
             assertThat(json(call("GET","/api/v1/admin/overview"))["investmentStatus"]["status"].asText()).isEqualTo("PAUSED")
-            assertThat(call("PATCH","/api/v1/admin/investors/inv_001","{\"alias\":\"중지 중 수정\"}").status).isEqualTo(200)
             unchangedMoney()
         }
     }

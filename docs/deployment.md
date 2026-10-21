@@ -50,7 +50,7 @@ export default defineConfig({
 });
 ```
 
-`fetch('/api/v1/investor/csrf', { credentials: 'same-origin' })`처럼 상대 주소로 호출합니다. 로그인/투자/별칭 변경/로그아웃에는 받은 역할별 `X-CSRF-Token`을 넣습니다. 경로를 rewrite하지 마세요. 세션 쿠키의 Path와 API 경로를 그대로 유지해야 합니다. 관리자와 투자자 쿠키·CSRF 토큰은 각각 관리합니다. Next.js 등 다른 개발 서버도 동일한 경로·Origin 전달 규칙으로 프록시를 구성합니다.
+`fetch('/api/v1/investor/csrf', { credentials: 'same-origin' })`처럼 상대 주소로 호출합니다. 로그인/투자/투자 중지·재개/로그아웃에는 받은 역할별 `X-CSRF-Token`을 넣습니다. 경로를 rewrite하지 마세요. 세션 쿠키의 Path와 API 경로를 그대로 유지해야 합니다. 관리자와 투자자 쿠키·CSRF 토큰은 각각 관리합니다. Next.js 등 다른 개발 서버도 동일한 경로·Origin 전달 규칙으로 프록시를 구성합니다.
 
 운영은 HTTPS와 Secure 쿠키를 사용해요. 로컬 프록시 방법은 [프론트엔드 문서](frontend.md)에 있어요.
 

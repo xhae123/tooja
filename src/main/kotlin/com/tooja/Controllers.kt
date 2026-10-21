@@ -59,7 +59,7 @@ class InvestorController(private val service: InvestmentService) {
 }
 @RestController
 @RequestMapping("/api/v1/admin", produces=["application/json"]) @Access("admin") @SecurityRequirement(name="AdminSession")
-@Tag(name="03 관리자",description="운영팀 투자자와 관리자 권한은 별개입니다. 조회·별칭 수정과 전체 투자 중지·재개를 제공합니다.")
+@Tag(name="03 관리자",description="운영팀 투자자와 관리자 권한은 별개입니다. 조회와 전체 투자 중지·재개를 제공합니다.")
 class AdminController(private val service: InvestmentService) {
     @PatchMapping("/investment-status") @Operation(operationId="updateInvestmentStatus",summary="[관리자] 전체 투자 중지·재개",description=OperationDescriptions.UPDATE_INVESTMENT_STATUS)
     fun investmentStatus(@Valid @RequestBody body: InvestmentStatusInput): InvestmentStatus=service.updateInvestmentStatus(body.status)
@@ -72,8 +72,6 @@ class AdminController(private val service: InvestmentService) {
     }
     @GetMapping("/investors/{investorId}") @Operation(operationId="getInvestorDetail",summary="[관리자] 투자자 잔액·거래 조회",description=OperationDescriptions.GET_INVESTOR)
     fun detail(@PathVariable investorId: String): InvestorDetail { val h=service.history(investorId);return InvestorDetail(h.investor,h.items,h.asOf) }
-    @PatchMapping("/investors/{investorId}") @Operation(operationId="updateInvestorAlias",summary="[관리자] 별칭 수정",description=OperationDescriptions.UPDATE_ALIAS)
-    fun alias(@PathVariable investorId: String,@Valid @RequestBody body: AliasInput): Investor=service.updateAlias(investorId,body.alias)
 }
 @RestController @RequestMapping(produces=["application/json"]) @Tag(name="04 공개 대시보드")
 class PublicController(private val service: InvestmentService) {
