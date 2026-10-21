@@ -30,8 +30,8 @@ class ApiDocumentation {
             "FORBIDDEN" to "필요한 세션 쿠키 없음 AND 반대 역할로만 로그인함, 또는 요구 역할의 계정이 비활성 상태임.",
             "RATE_LIMITED" to "직전 60초 내 통과 요청이 보호 API는 역할+계정당 180회, 공개 API는 서버 연결 주소당 30,000회 이상. 운영 WAF는 클라이언트 IP당 60초 동안 30,000건을 초과하면 60초 제한. 로그인·CSRF 준비에는 이 서버 제한을 적용하지 않음.",
             "CSRF_INVALID" to "Origin이 설정된 웹 출처와 다름/누락 OR X-CSRF-Token이 현재 역할의 세션·로그인 준비 컨텍스트와 다름/누락/만료.",
-            "INVALID_REQUEST" to "본문이 없거나 JSON 객체로 파싱할 수 없음 OR 필수 문자열 필드(code/alias/status) 누락/null OR 미정의 본문 필드 존재 OR 필드 타입 불일치 OR 지원하지 않는 Content-Type.",
-            "VALIDATION_FAILED" to "필수 헤더 누락, 잘못된 UUID v4, 금액 범위·10만원 단위 위반, 별칭 규칙 위반, 쿼리 중복·미정의 키, 또는 선택 필터가 전달됨 AND 허용값이 아님.",
+            "INVALID_REQUEST" to "본문이 없거나 JSON 객체로 파싱할 수 없음 OR 필수 문자열 필드(code/status) 누락/null OR 미정의 본문 필드 존재 OR 필드 타입 불일치 OR 지원하지 않는 Content-Type.",
+            "VALIDATION_FAILED" to "필수 헤더 누락, 잘못된 UUID v4, 금액 범위·10만원 단위 위반, 쿼리 중복·미정의 키, 또는 선택 필터가 전달됨 AND 허용값이 아님.",
             "AUTHENTICATION_FAILED" to "코드가 이 로그인 역할의 활성 계정과 일치하지 않음. 존재·비활성 여부를 구분해서 노출하지 않음.",
             "INVESTMENT_PAUSED" to "동일 키의 기존 결과가 없음 AND 투자 접수 상태가 PAUSED. 요청 키를 소비하지 않으며 재개 후 같은 키·본문 재전송 가능.",
             "SELF_INVESTMENT_FORBIDDEN" to "새 투자 AND 투자 상태 RUNNING AND PARTICIPANT의 소속팀 == 투자 대상팀.",
@@ -43,7 +43,7 @@ class ApiDocumentation {
             "SERVICE_UNAVAILABLE" to "SQLite 등 필수 저장소 접근 실패. 투자 성공 여부는 동일 키로 다시 확인.",
             "INTERNAL_ERROR" to "다른 정의된 오류로 분류되지 않는 실행 예외. 투자 성공 여부는 동일 키로 다시 확인."
         )
-        val fieldDescriptions=mapOf("investmentStatus" to "전체 투자 접수 상태. PAUSED이면 팀별 상태가 AVAILABLE이어도 투자 버튼을 차단합니다.", "csrfToken" to "이 역할의 쓰기 요청 X-CSRF-Token 헤더 값. 로그인 성공 후 새 값으로 교체합니다.", "expiresAt" to "세션 만료 시각(UTC). 발급 후 48시간 고정이며 조회로 연장되지 않습니다.", "serviceName" to "부스의 서비스 표시 이름.", "description" to "부스의 서비스 소개.", "myInvestmentAmount" to "이 투자자가 이 팀에 확정한 투자액. 아직 투자하지 않았으면 0.", "investmentId" to "확정 거래 ID. 내 거래 상세 경로에서 사용합니다.", "confirmedAt" to "거래 확정 시각(UTC).", "raisedAmount" to "이 팀에 확정된 전체 투자액 합계(원).", "count" to "이 응답 목록의 전체 항목 수. 페이지네이션은 없습니다.", "totalIssuedAmount" to "등록한 투자자에게 지급한 금액 합계(원). 로그인 여부와 무관합니다.", "totalInvestedAmount" to "확정 투자 금액 합계(원).", "totalBalance" to "지급받은 투자자의 남은 투자금 합계(원).", "completedCount" to "잔액이 0원인 투자자 수.", "unspentCount" to "지급 후 잔액이 남은 투자자 수.", "originalHttpStatus" to "저장된 투자 거절의 HTTP 상태. 이 결과 조회 자체는 HTTP 200입니다.", "message" to "화면 표시용 오류 안내. 분기 처리는 message가 아닌 code로 하세요.", "details" to "추가 오류 정보. 입력 오류는 fieldErrors 배열을 포함할 수 있습니다.", "investorId" to "서버 내부 투자자 ID. 로그인 코드는 응답에 포함하지 않습니다.", "alias" to "관리자가 수정할 수 있는 표시 별칭. 중복은 허용합니다.", "kind" to "PARTICIPANT=참가자, STAFF=운영팀 투자자. 운영팀 투자자는 관리자 권한이 없습니다.", "teamId" to "참가자 소속 또는 투자 대상 팀 번호. 운영팀 투자자의 소속은 null입니다.", "issuedAmount" to "투자자 등록 시 지급한 100만원. 로그인으로 재지급하지 않습니다.", "investedAmount" to "확정한 투자 금액 합계, 원 단위.", "balance" to "현재 남은 투자금, 원 단위. 등록 직후 100만원입니다.", "spendingStatus" to "UNSPENT=잔액 남음, COMPLETED=전액 투자 완료. 로그인 여부와 무관합니다.", "amount" to "원 단위 정수. 10만~70만원, 10만원 단위.", "asOf" to "응답 데이터의 조회 기준 시각 UTC. 화면에서 한국 시간으로 표시합니다.", "currentBalance" to "과거 거래 당시가 아닌 조회 시점의 현재 잔액.", "balanceAfterInvestment" to "해당 거래 확정 당시 잔액. 멱등 재전송도 같은 영수증을 반환합니다.", "snapshotVersion" to "투자 커밋마다 증가하는 버전. 조회 시각과 구분합니다.", "registeredInvestorCount" to "사전 등록한 전체 투자자 수. 미로그인자 포함, 관리자 제외.", "investedInvestorCount" to "1회 이상 투자한 고유 투자자 수.", "rank" to "경쟁 순위 1·1·3. 화면 배열 인덱스로 순위를 계산하지 마세요.", "allowedAmounts" to "현재 잔액 이하의 선택 가능 금액. 화면은 7개 버튼을 모두 표시하고 나머지는 비활성화합니다.", "investmentState" to "SELF_TEAM → ALREADY_INVESTED → BALANCE_EXHAUSTED → AVAILABLE 우선순위.", "requestId" to "오류 보고용 HTTP 요청 추적 ID. X-Request-ID 헤더와 같습니다.")
+        val fieldDescriptions=mapOf("investmentStatus" to "전체 투자 접수 상태. PAUSED이면 팀별 상태가 AVAILABLE이어도 투자 버튼을 차단합니다.", "csrfToken" to "이 역할의 쓰기 요청 X-CSRF-Token 헤더 값. 로그인 성공 후 새 값으로 교체합니다.", "expiresAt" to "세션 만료 시각(UTC). 발급 후 48시간 고정이며 조회로 연장되지 않습니다.", "serviceName" to "부스의 서비스 표시 이름.", "description" to "부스의 서비스 소개.", "myInvestmentAmount" to "이 투자자가 이 팀에 확정한 투자액. 아직 투자하지 않았으면 0.", "investmentId" to "확정 거래 ID. 내 거래 상세 경로에서 사용합니다.", "confirmedAt" to "거래 확정 시각(UTC).", "raisedAmount" to "이 팀에 확정된 전체 투자액 합계(원).", "count" to "이 응답 목록의 전체 항목 수. 페이지네이션은 없습니다.", "totalIssuedAmount" to "등록한 투자자에게 지급한 금액 합계(원). 로그인 여부와 무관합니다.", "totalInvestedAmount" to "확정 투자 금액 합계(원).", "totalBalance" to "지급받은 투자자의 남은 투자금 합계(원).", "completedCount" to "잔액이 0원인 투자자 수.", "unspentCount" to "지급 후 잔액이 남은 투자자 수.", "originalHttpStatus" to "저장된 투자 거절의 HTTP 상태. 이 결과 조회 자체는 HTTP 200입니다.", "message" to "화면 표시용 오류 안내. 분기 처리는 message가 아닌 code로 하세요.", "details" to "추가 오류 정보. 입력 오류는 fieldErrors 배열을 포함할 수 있습니다.", "investorId" to "서버 내부 투자자 ID. 로그인 코드는 응답에 포함하지 않습니다.", "alias" to "사전 등록한 투자자 이름. 관리자 화면에서 수정하지 않습니다.", "kind" to "PARTICIPANT=참가자, STAFF=운영팀 투자자. 운영팀 투자자는 관리자 권한이 없습니다.", "teamId" to "참가자 소속 또는 투자 대상 팀 번호. 운영팀 투자자의 소속은 null입니다.", "issuedAmount" to "투자자 등록 시 지급한 100만원. 로그인으로 재지급하지 않습니다.", "investedAmount" to "확정한 투자 금액 합계, 원 단위.", "balance" to "현재 남은 투자금, 원 단위. 등록 직후 100만원입니다.", "spendingStatus" to "UNSPENT=잔액 남음, COMPLETED=전액 투자 완료. 로그인 여부와 무관합니다.", "amount" to "원 단위 정수. 10만~70만원, 10만원 단위.", "asOf" to "응답 데이터의 조회 기준 시각 UTC. 화면에서 한국 시간으로 표시합니다.", "currentBalance" to "과거 거래 당시가 아닌 조회 시점의 현재 잔액.", "balanceAfterInvestment" to "해당 거래 확정 당시 잔액. 멱등 재전송도 같은 영수증을 반환합니다.", "snapshotVersion" to "투자 커밋마다 증가하는 버전. 조회 시각과 구분합니다.", "registeredInvestorCount" to "사전 등록한 전체 투자자 수. 미로그인자 포함, 관리자 제외.", "investedInvestorCount" to "1회 이상 투자한 고유 투자자 수.", "rank" to "경쟁 순위 1·1·3. 화면 배열 인덱스로 순위를 계산하지 마세요.", "allowedAmounts" to "현재 잔액 이하의 선택 가능 금액. 화면은 7개 버튼을 모두 표시하고 나머지는 비활성화합니다.", "investmentState" to "SELF_TEAM → ALREADY_INVESTED → BALANCE_EXHAUSTED → AVAILABLE 우선순위.", "requestId" to "오류 보고용 HTTP 요청 추적 ID. X-Request-ID 헤더와 같습니다.")
         api.components.schemas?.values?.forEach { schema -> schema.properties?.forEach { (name,property) -> fieldDescriptions[name]?.let { property.description=it } } }
         api.components.schemas?.get("InvestmentStatus")?.properties?.apply {
             get("status")?.description="RUNNING=신규 투자 접수, PAUSED=신규 투자 중지. 로그인·조회는 계속 가능합니다."
@@ -59,7 +59,6 @@ class ApiDocumentation {
         api.components.schemas?.get("Team")?.properties?.get("investmentState")?.setEnum(listOf("SELF_TEAM","ALREADY_INVESTED","BALANCE_EXHAUSTED","AVAILABLE"))
         api.components.schemas?.get("InvestmentInput")?.properties?.get("teamId")?.description="투자 대상 팀 번호(1~20). 참가자는 소속팀에 투자할 수 없습니다."
         api.components.schemas?.get("LoginInput")?.properties?.get("code")?.description="ASCII 숫자 4자리 문자열. 재사용하는 사전 발급 코드이며 앞자리 0을 유지합니다. 숫자 타입은 400입니다."
-        api.components.schemas?.get("AliasInput")?.properties?.get("alias")?.description="새 표시 별칭. 1~40자, 앞뒤 공백·CR/LF 불가. 중복 허용, 자동 trim 없음."
         api.paths?.forEach { (path,item) -> item.readOperationsMap().forEach { (method,op) ->
             if(!path.startsWith("/api/v1/")) return@forEach
             val id=op.operationId
@@ -76,7 +75,7 @@ class ApiDocumentation {
                 "SERVICE_UNAVAILABLE" to "저장소에 연결할 수 없습니다. 결과를 다시 확인해 주세요.", "INTERNAL_ERROR" to "처리 중 오류가 발생했습니다. 결과를 다시 확인해 주세요."
             ).toMutableMap()
             if(id.endsWith("Logout")) exampleMessages["INVALID_REQUEST"]="로그아웃에는 본문을 보내지 않습니다."
-            if(id in listOf("getInvestorDetail","updateInvestorAlias")) exampleMessages["RESOURCE_NOT_FOUND"]="투자자를 찾을 수 없습니다."
+            if(id in listOf("getInvestorDetail")) exampleMessages["RESOURCE_NOT_FOUND"]="투자자를 찾을 수 없습니다."
             if(id in listOf("getTeam","createInvestment")) exampleMessages["RESOURCE_NOT_FOUND"]="팀을 찾을 수 없습니다."
             val localConditions=conditions.toMutableMap()
             val queryCondition=if(id=="listInvestors") "미정의 쿼리 키 존재 OR 동일 쿼리 키가 2번 이상 전달됨 OR q 길이 > 100 OR teamId가 정수 1~20이 아님 OR kind가 전달됨 AND PARTICIPANT/STAFF가 아님 OR spendingStatus가 전달됨 AND UNSPENT/COMPLETED가 아님." else "쿼리 파라미터가 하나라도 전달됨(이 API는 쿼리를 받지 않음)."
@@ -85,7 +84,6 @@ class ApiDocumentation {
                 "createInvestment" -> " 또는 Idempotency-Key 누락/UUID v4 아님 OR teamId가 1~20 밖 OR amount가 100000~700000 밖 OR amount % 100000 != 0. teamId/amount 누락 또는 null은 현재 바인더에서 0으로 처리되어 범위 검증 422를 반환."
                 "getInvestmentRequest" -> " 또는 requestKey가 UUID v4가 아님."
                 "getTeam" -> " 또는 teamId 경로값을 Int로 변환할 수 없음."
-                "updateInvestorAlias" -> " 또는 alias 길이가 1~40 밖 OR 앞뒤 공백 OR CR/LF 포함."
                 else -> ""
             }
             if(id=="updateInvestmentStatus") localConditions["INVALID_REQUEST"]="본문이 없거나 JSON 객체가 아님 OR status 누락/null/문자열 아님 OR status가 RUNNING·PAUSED 중 하나가 아님(대소문자 구분) OR 미정의 본문 필드 OR 지원하지 않는 Content-Type."
@@ -93,7 +91,7 @@ class ApiDocumentation {
             if(id=="getInvestmentRequest") localConditions["REQUEST_RESULT_NOT_FOUND"]="현재 투자자 + requestKey로 커밋된 결과가 없음. 미도착·미커밋·다른 투자자의 키 포함. 같은 키·본문으로 재전송하며 실패 확정으로 처리하지 않습니다."
             if(id=="getTeam") localConditions["RESOURCE_NOT_FOUND"]="정수로 변환된 teamId에 해당하는 팀이 없음."
             if(id=="getMyInvestment") localConditions["RESOURCE_NOT_FOUND"]="investmentId에 해당하는 현재 투자자 소유 거래가 없음. 없는 ID와 타인 거래를 구분하지 않습니다."
-            if(id in listOf("getInvestorDetail","updateInvestorAlias")) localConditions["RESOURCE_NOT_FOUND"]="investorId에 해당하는 활성 투자자가 없음. 비활성 투자자·관리자 ID 포함."
+            if(id in listOf("getInvestorDetail")) localConditions["RESOURCE_NOT_FOUND"]="investorId에 해당하는 활성 투자자가 없음. 비활성 투자자·관리자 ID 포함."
             if(id=="createInvestment") {
                 localConditions["SELF_INVESTMENT_FORBIDDEN"]="새 요청 키 AND 투자 상태 RUNNING AND kind=PARTICIPANT AND 본인 teamId=요청 teamId. 동일 키·본문의 이전 거절이면 그 거절을 그대로 재현."
                 localConditions["ALREADY_INVESTED"]="새 요청 키 AND 투자 상태 RUNNING AND 자기 팀 검증 통과 AND 동일 투자자·팀의 확정 거래 존재. 이전 동일 키·본문의 거절도 재현."
@@ -101,7 +99,7 @@ class ApiDocumentation {
                 localConditions["RESOURCE_NOT_FOUND"]="새 요청 키 AND 투자 상태 RUNNING AND 대상 팀이 DB에 없음(정상 초기화는 20개 팀을 모두 등록)."
             }
             op.parameters?.forEach { p ->
-                if(p.name=="q") p.description="선택. 별칭 또는 내부 투자자 ID 부분 검색, 대소문자 무시, 최대 100자. 생략 또는 빈 문자열이면 검색 제한 없음."
+                if(p.name=="q") p.description="선택. 이름 또는 내부 투자자 ID 부분 검색, 대소문자 무시, 최대 100자. 생략 또는 빈 문자열이면 검색 제한 없음."
                 if(p.name=="teamId") p.description=if(id=="listInvestors") "선택. 참가자 소속팀 번호 1~20. STAFF는 소속팀이 없어 이 필터와 일치하지 않습니다." else "부스 목록에서 받은 정수 팀 번호. 존재하지 않는 번호는 404."
                 if(p.name=="investorId") p.description="투자자 목록에서 받은 내부 ID. 로그인 코드가 아닙니다."
                 if(p.name=="investmentId") p.description="내 영수증 또는 거래 목록에서 받은 거래 ID. 타인 거래도 404입니다."
@@ -114,7 +112,6 @@ class ApiDocumentation {
                 "adminLogin" -> mapOf("code" to "4821")
                 "createInvestment" -> mapOf("teamId" to 2,"amount" to 100000)
                 "updateInvestmentStatus" -> mapOf("status" to "PAUSED")
-                "updateInvestorAlias" -> mapOf("alias" to "새 별칭")
                 else -> emptyMap<String,Any>()
             }))
             val protected= !op.security.isNullOrEmpty();val errors=linkedMapOf<String,MutableList<String>>()
@@ -126,7 +123,7 @@ class ApiDocumentation {
             add("422","VALIDATION_FAILED")
             if(id in listOf("investorLogin","adminLogin"))add("401","AUTHENTICATION_FAILED")
             if(id=="createInvestment"){add("409","IDEMPOTENCY_KEY_REUSED","INVESTMENT_PAUSED");add("404","RESOURCE_NOT_FOUND");add("403","SELF_INVESTMENT_FORBIDDEN");add("409","ALREADY_INVESTED","INSUFFICIENT_BALANCE")}
-            if(id in listOf("getTeam","getMyInvestment","getInvestorDetail","updateInvestorAlias"))add("404","RESOURCE_NOT_FOUND")
+            if(id in listOf("getTeam","getMyInvestment","getInvestorDetail"))add("404","RESOURCE_NOT_FOUND")
             if(id=="getInvestmentRequest")add("404","REQUEST_RESULT_NOT_FOUND")
             add("500","INTERNAL_ERROR");add("503","SERVICE_UNAVAILABLE")
             errors.forEach { (status,codes) ->

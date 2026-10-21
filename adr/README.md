@@ -42,3 +42,5 @@
 - [ADR 0031: 인프라 기록은 oci-man 안에 통합해요](0031-infra-skill-records.md)
 
 - [0032 등록 시 100만원 지급과 소진 상태 간소화](0032-registration-grant.md)
+
+- [0033 사전 등록 이름 조회와 이름 수정 기능 제거](0033-read-only-investor-name.md)

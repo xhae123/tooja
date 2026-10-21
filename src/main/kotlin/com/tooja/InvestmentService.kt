@@ -92,7 +92,6 @@ class InvestmentService(private val db: Database, private val clock: Clock) {
             (q==null || it.alias.contains(q,ignoreCase=true) || it.investorId.contains(q,ignoreCase=true)) && (teamId==null || it.teamId==teamId) && (kind==null || it.kind==kind) && (status==null || it.spendingStatus==status)
         };InvestorList(items,items.size,clock.instant())
     }
-    fun updateAlias(id: String,alias: String): Investor = db.write { investor(id);db.jdbc.update("UPDATE accounts SET alias=? WHERE id=?",alias,id);investor(id) }
     private fun metrics(items: List<Investor>): Metrics = Metrics(items.size,items.count { it.investedAmount>0 },items.sumOf { it.issuedAmount.toLong() },items.sumOf { it.investedAmount.toLong() },items.sumOf { it.balance.toLong() },items.count { it.spendingStatus=="COMPLETED" },items.count { it.spendingStatus=="UNSPENT" })
     fun overview(): Overview = db.read { val all=list(null,null,null,null).items;Overview(metrics(all),metrics(all.filter{it.kind=="PARTICIPANT"}),metrics(all.filter{it.kind=="STAFF"}),clock.instant(),db.jdbc.queryForObject("SELECT version FROM metadata WHERE id=1",Long::class.java)!!,control()) }
     fun dashboard(): Dashboard = db.read {

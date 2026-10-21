@@ -14,7 +14,7 @@
 | 화면 | 사용할 API | 연결할 내용 |
 |---|---|---|
 | P01 투자자 로그인 | `GET /investor/csrf`, `POST /investor/session` | 숫자 4자리 코드로 로그인해요. 소속 팀을 따로 입력하지 않아요. |
-| P02 투자 홈 | `GET /investor/teams` | 소속·별칭·지급액·투자액·잔액과 20개 팀의 상태·내 투자액을 받아요. |
+| P02 투자 홈 | `GET /investor/teams` | 소속·이름·지급액·투자액·잔액과 20개 팀의 상태·내 투자액을 받아요. |
 | P03 팀 투자 | `GET /investor/teams/{teamId}` | 팀 소개·현재 잔액·투자 가능 금액을 받아요. 투자 후 잔액 미리보기는 현재 잔액에서 선택 금액을 빼면 돼요. |
 | P03-M 최종 확인 | `POST /investor/investments`, `GET /investor/investment-requests/{requestKey}` | 확정 버튼에서 전송하고, 응답이 끊기면 같은 멱등 키로 결과를 확인해요. |
 | P04 투자 완료 | `GET /investor/investments/{investmentId}` | 거래 정보와 **현재 잔액**을 받아요. 투자 생성 응답의 `balanceAfterInvestment`는 해당 거래 직후 잔액이에요. |
@@ -22,7 +22,7 @@
 | A01 관리자 로그인 | `GET /admin/csrf`, `POST /admin/session` | 관리자도 숫자 4자리 코드예요. 투자자 세션과 별도로 로그인해요. |
 | A02 운영 현황 | `GET /admin/overview` | 전체·참가자·운영팀 투자자의 지급·투자·소진 현황을 받아요. |
 | A03 투자자 목록 | `GET /admin/investors` | `q`, `teamId`, `kind`, `spendingStatus`로 검색·필터링해요. |
-| A04 투자자 상세 | `GET /admin/investors/{investorId}` | 별칭·소속·잔액·소진 상태와 최신순 거래 내역을 받아요. |
+| A04 투자자 상세 | `GET /admin/investors/{investorId}` | 이름·소속·잔액·소진 상태와 최신순 거래 내역을 받아요. |
 | D01 공개 대시보드 | `GET /public/dashboard` | 총 투자액·투자한 고유 인원·20개 팀의 순위와 유치금을 받아요. |
 
 ## 먼저 디자인에 반영할 내용
@@ -42,9 +42,9 @@
 
 후속 결정으로 투자자는 사전 등록할 때 100만원을 지급받아요. `UNSPENT`(잔액 남음), `COMPLETED`(잔액 0원)만 제공하므로 시안의 ‘전체 / 미소진 / 소진 완료’를 그대로 연결하면 돼요. 미로그인 목록·필터·집계는 추가하지 않아요.
 
-### 별칭 수정은 API가 있지만 시안에는 조작이 없어요
+### 투자자 이름은 사전 등록한 값을 조회해요
 
-`PATCH /admin/investors/{investorId}`에 `alias`를 보내면 수정할 수 있어요. 새 관리자 화면에서도 별칭을 수정할 계획이라면 A04에 수정 버튼·입력 UI를 추가하면 돼요. 잔액 수정이나 투자 취소 기능을 추가하는 것은 아니에요.
+2026-10-21 결정으로 관리자 이름 수정 기능을 제거했어요. 행사 전에 DB에 정확한 이름을 등록하므로 A04에 수정 버튼·입력 UI를 추가하지 않아요. 기존 응답 필드 `alias`는 사전 등록 이름을 반환하는 용도로 유지해요.
 
 ## 새 디자인 표현은 프론트엔드에서 처리할 수 있어요
 

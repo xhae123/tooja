@@ -17,7 +17,6 @@ enum class InvestmentMode { RUNNING, PAUSED }
 @Schema(description="전체 투자 접수 상태. 중지해도 로그인·조회와 기존 영수증 복구는 가능합니다.")
 data class InvestmentStatus(val status: InvestmentMode, val revision: Long, val updatedAt: Instant?)
 data class InvestmentStatusInput(val status: InvestmentMode)
-data class AliasInput(@field:Size(min=1,max=40) @field:Pattern(regexp="^(?![\\s\\S]*[\\r\\n])\\S(?:.*\\S)?$") val alias: String)
 data class Team(val teamId: Int, val serviceName: String, val description: String, val investmentState: String, val myInvestmentAmount: Int, val allowedAmounts: List<Int>)
 data class TeamList(val investor: Investor, val teams: List<Team>, val asOf: Instant, val investmentStatus: InvestmentStatus)
 data class TeamDetail(val investor: Investor, val team: Team, val asOf: Instant, val investmentStatus: InvestmentStatus)
