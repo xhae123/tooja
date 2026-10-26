@@ -20,9 +20,18 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
     @Value("\${app.accounts-csv}") private val accountsFile: String, @Value("\${app.teams-csv}") private val teamsFile: String,
     private val telemetry: Telemetry? = null, private val clock: Clock = Clock.systemUTC()) {
     private val tx = TransactionTemplate(tm)
+    private val snapshotTx = TransactionTemplate(tm).apply {
+        // MySQL REPEATABLE READ uses one consistent read view across all SELECTs.
+        // SQLite WAL provides snapshot reads at its supported SERIALIZABLE level.
+        isolationLevel = if (env.activeProfiles.contains("mysql"))
+            org.springframework.transaction.TransactionDefinition.ISOLATION_REPEATABLE_READ
+        else org.springframework.transaction.TransactionDefinition.ISOLATION_SERIALIZABLE
+        propagationBehavior = org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW
+    }
     private val writeLock = ReentrantLock(true)
     fun <T:Any> write(block: () -> T): T = measure("write") { writeLock.withLock { tx.execute { block() }!! } }
     fun <T:Any> read(block: () -> T): T = measure("read") { tx.execute { block() }!! }
+    fun <T:Any> snapshot(block: () -> T): T = measure("read") { snapshotTx.execute { block() }!! }
     private fun <T> measure(operation: String,block: () -> T): T = telemetry?.database(operation,block) ?: block()
     val mysql: Boolean get() = env.activeProfiles.contains("mysql")
     private fun insertIgnore(sql: String): String = if (mysql) sql.replace("INSERT OR IGNORE", "INSERT IGNORE") else sql

@@ -61,7 +61,11 @@ class WebConfig(private val auth: AuthService,private val rates: RateLimits,
                 val role=if(req.requestURI.startsWith("/api/v1/admin/"))"admin" else "investor"
                 if(access!=null) { val session=auth.require(access.role,req);req.setAttribute("principal",session);rates.check("${access.role}:${session.accountId}",180) }
                 else if(req.requestURI.startsWith("/api/v1/public/")) rates.check("public:${req.remoteAddr}",30000)
-                val allowed=if(req.requestURI=="/api/v1/admin/investors") setOf("q","teamId","kind","spendingStatus") else emptySet()
+                val allowed=when(req.requestURI) {
+                    "/api/v1/admin/investors" -> setOf("q","teamId","kind","spendingStatus")
+                    "/api/v1/admin/investor-rankings" -> setOf("group")
+                    else -> emptySet()
+                }
                 if(req.parameterMap.keys.any { it !in allowed } || req.parameterMap.values.any { it.size!=1 }) throw ApiException(422,"VALIDATION_FAILED","정의되지 않거나 중복된 쿼리 파라미터입니다.",mapOf("fieldErrors" to listOf(mapOf("field" to "query","reason" to "UNKNOWN_OR_DUPLICATE","message" to "허용된 필터를 한 번씩만 보내세요."))))
                 if(req.method in listOf("POST","PATCH","DELETE")) {
                     if(req.method=="DELETE" && (req.contentLengthLong>0 || req.getHeader("Transfer-Encoding")!=null)) throw ApiException(400,"INVALID_REQUEST","로그아웃에는 본문을 보내지 않습니다.")

@@ -44,3 +44,5 @@
 - [0032 등록 시 100만원 지급과 소진 상태 간소화](0032-registration-grant.md)
 
 - [0033 사전 등록 이름 조회와 이름 수정 기능 제거](0033-read-only-investor-name.md)
+
+- [0034 조회 시점의 팀 순위로 투자자 성과 계산](0034-live-investor-performance-ranking.md)

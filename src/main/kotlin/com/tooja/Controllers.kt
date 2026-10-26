@@ -60,7 +60,15 @@ class InvestorController(private val service: InvestmentService) {
 @RestController
 @RequestMapping("/api/v1/admin", produces=["application/json"]) @Access("admin") @SecurityRequirement(name="AdminSession")
 @Tag(name="03 관리자",description="운영팀 투자자와 관리자 권한은 별개입니다. 조회와 전체 투자 중지·재개를 제공합니다.")
-class AdminController(private val service: InvestmentService) {
+class AdminController(private val service: InvestmentService, private val rankings: InvestorRankingService) {
+    @GetMapping("/investor-rankings")
+    @Operation(operationId="getInvestorRankings",summary="[관리자] 투자자 성과 순위",description=OperationDescriptions.GET_INVESTOR_RANKINGS)
+    fun rankings(@RequestParam(required=false) group: String?, response: HttpServletResponse): InvestorRankings {
+        val selected = if (group == null) RankingGroup.ALL else RankingGroup.entries.firstOrNull { it.name == group }
+            ?: throw ApiException(422,"VALIDATION_FAILED","조회할 그룹 값을 확인해 주세요.",mapOf("fieldErrors" to listOf(mapOf("field" to "group","reason" to "INVALID_GROUP","message" to "ALL, PARTICIPANT, STAFF 중 하나를 입력하세요."))))
+        response.setHeader("Cache-Control","no-store")
+        return rankings.rankings(selected)
+    }
     @PatchMapping("/investment-status") @Operation(operationId="updateInvestmentStatus",summary="[관리자] 전체 투자 중지·재개",description=OperationDescriptions.UPDATE_INVESTMENT_STATUS)
     fun investmentStatus(@Valid @RequestBody body: InvestmentStatusInput): InvestmentStatus=service.updateInvestmentStatus(body.status)
     @GetMapping("/overview") @Operation(operationId="getOverview",summary="[관리자] 전체·역할별 지급·소진 현황",description=OperationDescriptions.GET_OVERVIEW)

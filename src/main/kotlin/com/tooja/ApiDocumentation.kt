@@ -45,6 +45,22 @@ class ApiDocumentation {
         )
         val fieldDescriptions=mapOf("investmentStatus" to "전체 투자 접수 상태. PAUSED이면 팀별 상태가 AVAILABLE이어도 투자 버튼을 차단합니다.", "csrfToken" to "이 역할의 쓰기 요청 X-CSRF-Token 헤더 값. 로그인 성공 후 새 값으로 교체합니다.", "expiresAt" to "세션 만료 시각(UTC). 발급 후 48시간 고정이며 조회로 연장되지 않습니다.", "serviceName" to "부스의 서비스 표시 이름.", "description" to "부스의 서비스 소개.", "myInvestmentAmount" to "이 투자자가 이 팀에 확정한 투자액. 아직 투자하지 않았으면 0.", "investmentId" to "확정 거래 ID. 내 거래 상세 경로에서 사용합니다.", "confirmedAt" to "거래 확정 시각(UTC).", "raisedAmount" to "이 팀에 확정된 전체 투자액 합계(원).", "count" to "이 응답 목록의 전체 항목 수. 페이지네이션은 없습니다.", "totalIssuedAmount" to "등록한 투자자에게 지급한 금액 합계(원). 로그인 여부와 무관합니다.", "totalInvestedAmount" to "확정 투자 금액 합계(원).", "totalBalance" to "지급받은 투자자의 남은 투자금 합계(원).", "completedCount" to "잔액이 0원인 투자자 수.", "unspentCount" to "지급 후 잔액이 남은 투자자 수.", "originalHttpStatus" to "저장된 투자 거절의 HTTP 상태. 이 결과 조회 자체는 HTTP 200입니다.", "message" to "화면 표시용 오류 안내. 분기 처리는 message가 아닌 code로 하세요.", "details" to "추가 오류 정보. 입력 오류는 fieldErrors 배열을 포함할 수 있습니다.", "investorId" to "서버 내부 투자자 ID. 로그인 코드는 응답에 포함하지 않습니다.", "alias" to "사전 등록한 투자자 이름. 관리자 화면에서 수정하지 않습니다.", "kind" to "PARTICIPANT=참가자, STAFF=운영팀 투자자. 운영팀 투자자는 관리자 권한이 없습니다.", "teamId" to "참가자 소속 또는 투자 대상 팀 번호. 운영팀 투자자의 소속은 null입니다.", "issuedAmount" to "투자자 등록 시 지급한 100만원. 로그인으로 재지급하지 않습니다.", "investedAmount" to "확정한 투자 금액 합계, 원 단위.", "balance" to "현재 남은 투자금, 원 단위. 등록 직후 100만원입니다.", "spendingStatus" to "UNSPENT=잔액 남음, COMPLETED=전액 투자 완료. 로그인 여부와 무관합니다.", "amount" to "원 단위 정수. 10만~70만원, 10만원 단위.", "asOf" to "응답 데이터의 조회 기준 시각 UTC. 화면에서 한국 시간으로 표시합니다.", "currentBalance" to "과거 거래 당시가 아닌 조회 시점의 현재 잔액.", "balanceAfterInvestment" to "해당 거래 확정 당시 잔액. 멱등 재전송도 같은 영수증을 반환합니다.", "snapshotVersion" to "투자 커밋마다 증가하는 버전. 조회 시각과 구분합니다.", "registeredInvestorCount" to "사전 등록한 전체 투자자 수. 미로그인자 포함, 관리자 제외.", "investedInvestorCount" to "1회 이상 투자한 고유 투자자 수.", "rank" to "경쟁 순위 1·1·3. 화면 배열 인덱스로 순위를 계산하지 마세요.", "allowedAmounts" to "현재 잔액 이하의 선택 가능 금액. 화면은 7개 버튼을 모두 표시하고 나머지는 비활성화합니다.", "investmentState" to "SELF_TEAM → ALREADY_INVESTED → BALANCE_EXHAUSTED → AVAILABLE 우선순위.", "requestId" to "오류 보고용 HTTP 요청 추적 ID. X-Request-ID 헤더와 같습니다.")
         api.components.schemas?.values?.forEach { schema -> schema.properties?.forEach { (name,property) -> fieldDescriptions[name]?.let { property.description=it } } }
+        api.components.schemas?.get("InvestorRanking")?.properties?.apply {
+            get("rank")?.apply { description="선택 그룹 내 전액 투자자 순위(1·1·3). 미소진자는 필드를 생략하지 않고 null로 반환해요."; nullable=true; types=setOf("integer","null") }
+            get("score")?.description="현재 팀 배점으로 계산한 개인 총점. 음수도 가능하며 실제 돈이나 잔액이 아니에요."
+            get("teamId")?.apply { description="투자자의 소속 팀 번호. 운영팀 투자자는 null이에요."; nullable=true; types=setOf("integer","null") }
+            get("kind")?.setEnum(listOf("PARTICIPANT","STAFF"))
+            get("contributions")?.description="팀별 점수 계산 근거. 팀 번호 오름차순이며 투자 내역이 없으면 빈 배열이에요."
+        }
+        api.components.schemas?.get("InvestorRanking")?.apply { required=(required.orEmpty()+listOf("rank","teamId")).distinct() }
+        api.components.schemas?.get("InvestorRankings")?.properties?.get("asOf")?.description="읽기 스냅샷을 확보한 기준 시각 UTC. 같은 응답의 팀·개인 점수는 같은 스냅샷에서 계산해요."
+        api.components.schemas?.get("ScoreContribution")?.properties?.apply {
+            get("teamId")?.description="실제 투자한 대상 팀 번호. 투자자의 소속 팀과 달라요."
+            get("teamRank")?.description="전체 투자 유치액 기준 팀 경쟁 순위(1·1·3). 0원 팀은 이 계산에서 공동 20등이에요."
+            get("investedAmount")?.description="해당 투자자가 이 팀에 투자한 금액(원)."
+            get("pointsPerUnit")?.description="투자금 10만원당 배점. 1~10등은 11-rank, 11~20등은 10-rank예요."
+            get("score")?.description="(investedAmount / 100000) × pointsPerUnit."
+        }
         api.components.schemas?.get("InvestmentStatus")?.properties?.apply {
             get("status")?.description="RUNNING=신규 투자 접수, PAUSED=신규 투자 중지. 로그인·조회는 계속 가능합니다."
             get("revision")?.description="실제 상태 변경 때만 증가하는 버전. 초기값 0이며 투자 snapshotVersion과 별개입니다."
@@ -78,7 +94,11 @@ class ApiDocumentation {
             if(id in listOf("getInvestorDetail")) exampleMessages["RESOURCE_NOT_FOUND"]="투자자를 찾을 수 없습니다."
             if(id in listOf("getTeam","createInvestment")) exampleMessages["RESOURCE_NOT_FOUND"]="팀을 찾을 수 없습니다."
             val localConditions=conditions.toMutableMap()
-            val queryCondition=if(id=="listInvestors") "미정의 쿼리 키 존재 OR 동일 쿼리 키가 2번 이상 전달됨 OR q 길이 > 100 OR teamId가 정수 1~20이 아님 OR kind가 전달됨 AND PARTICIPANT/STAFF가 아님 OR spendingStatus가 전달됨 AND UNSPENT/COMPLETED가 아님." else "쿼리 파라미터가 하나라도 전달됨(이 API는 쿼리를 받지 않음)."
+            val queryCondition=when(id) {
+                "listInvestors" -> "미정의 쿼리 키 존재 OR 동일 쿼리 키가 2번 이상 전달됨 OR q 길이 > 100 OR teamId가 정수 1~20이 아님 OR kind가 전달됨 AND PARTICIPANT/STAFF가 아님 OR spendingStatus가 전달됨 AND UNSPENT/COMPLETED가 아님."
+                "getInvestorRankings" -> "group 외 쿼리 키 존재 OR 동일 키가 2번 이상 전달됨 OR group이 전달됨 AND ALL/PARTICIPANT/STAFF 중 어느 값과도 정확히 일치하지 않음(빈 값·공백·소문자 포함). group 생략은 ALL로 정상 처리."
+                else -> "쿼리 파라미터가 하나라도 전달됨(이 API는 쿼리를 받지 않음)."
+            }
             localConditions["VALIDATION_FAILED"]=queryCondition + when(id) {
                 "investorLogin","adminLogin" -> " 또는 code가 문자열로 파싱되었으나 ASCII 숫자 4자리 패턴이 아님."
                 "createInvestment" -> " 또는 Idempotency-Key 누락/UUID v4 아님 OR teamId가 1~20 밖 OR amount가 100000~700000 밖 OR amount % 100000 != 0. teamId/amount 누락 또는 null은 현재 바인더에서 0으로 처리되어 범위 검증 422를 반환."
@@ -92,6 +112,10 @@ class ApiDocumentation {
             if(id=="getTeam") localConditions["RESOURCE_NOT_FOUND"]="정수로 변환된 teamId에 해당하는 팀이 없음."
             if(id=="getMyInvestment") localConditions["RESOURCE_NOT_FOUND"]="investmentId에 해당하는 현재 투자자 소유 거래가 없음. 없는 ID와 타인 거래를 구분하지 않습니다."
             if(id in listOf("getInvestorDetail")) localConditions["RESOURCE_NOT_FOUND"]="investorId에 해당하는 활성 투자자가 없음. 비활성 투자자·관리자 ID 포함."
+            if(id=="getInvestorRankings") {
+                localConditions["SERVICE_UNAVAILABLE"]="성과 계산을 위한 DB 읽기 중 저장소 접근 예외 발생. HTTP 503과 Retry-After: 5를 반환하며 빈 목록으로 대체하지 않아요."
+                localConditions["INTERNAL_ERROR"]="성과 계산 중 저장소 예외 외 예상하지 못한 실행 예외 발생. 잘못된 0점이나 빈 목록으로 대체하지 않아요."
+            }
             if(id=="createInvestment") {
                 localConditions["SELF_INVESTMENT_FORBIDDEN"]="새 요청 키 AND 투자 상태 RUNNING AND kind=PARTICIPANT AND 본인 teamId=요청 teamId. 동일 키·본문의 이전 거절이면 그 거절을 그대로 재현."
                 localConditions["ALREADY_INVESTED"]="새 요청 키 AND 투자 상태 RUNNING AND 자기 팀 검증 통과 AND 동일 투자자·팀의 확정 거래 존재. 이전 동일 키·본문의 거절도 재현."
@@ -105,6 +129,7 @@ class ApiDocumentation {
                 if(p.name=="investmentId") p.description="내 영수증 또는 거래 목록에서 받은 거래 ID. 타인 거래도 404입니다."
                 if(p.name=="kind") { p.schema.setEnum(listOf("PARTICIPANT","STAFF"));p.description="생략하면 전체. 전달한 값이 허용값이 아니면 422." }
                 if(p.name=="spendingStatus") { p.schema.setEnum(listOf("UNSPENT","COMPLETED"));p.description="미소진·소진 완료를 구분합니다. 생략하면 전체." }
+                if(id=="getInvestorRankings" && p.name=="group") { p.schema.setEnum(listOf("ALL","PARTICIPANT","STAFF"));p.schema.setDefault("ALL");p.description="선택. 생략=ALL(전체), PARTICIPANT=참가자, STAFF=운영팀 투자자. 출력 대상과 개인 순위에만 적용하며 팀 배점과 개인 점수는 전체 투자 기준이에요. 빈 값·중복·대소문자 불일치는 422예요." }
                 if(p.name in listOf("Idempotency-Key","requestKey")) { p.schema.format="uuid";p.description="논리적 투자마다 UUID v4. 재전송은 같은 값을 사용합니다." }
             }
             op.requestBody?.content?.get("application/json")?.addExamples("request",Example().summary("호출 예시").value(when(id) {
@@ -136,9 +161,27 @@ class ApiDocumentation {
                 "createInvestment" -> "투자 확정 또는 같은 키·본문의 기존 성공 영수증 복구. 추가 차감 없음."
                 "getInvestmentRequest" -> "요청 결과 조회 성공. SUCCEEDED와 REJECTED 모두 HTTP 200이며 본문의 status로 구분."
                 "listMyInvestments","listInvestors" -> "목록 조회 성공. 일치 항목이 없으면 빈 배열과 count=0."
+                "getInvestorRankings" -> "현재 성과 계산 성공. 미소진자는 rank=null, 투자 내역이 없으면 score=0/contributions=[]. 대상이 없으면 items=[], count=0. 잔액은 반환하지 않아요."
                 "investorLogin" -> "투자자 로그인 성공. 등록 시 지급된 잔액 유지. 세션 쿠키 발급 및 CSRF 토큰 교체."
                 "adminLogin" -> "관리자 로그인 성공. 세션 쿠키 발급 및 CSRF 토큰 교체. 투자금 지급 없음."
                 else -> "조회 또는 변경 성공. 아래 Schema에서 필드별 의미를 확인하세요."
+            }
+            if(id=="getInvestorRankings") {
+                op.responses["200"]?.addHeaderObject("Cache-Control",io.swagger.v3.oas.models.headers.Header().description("no-store. 결과를 저장하지 않고 조회마다 다시 계산해요.").schema(Schema<String>().apply { types=setOf("string");setDefault("no-store") }))
+                // JsonNode preserves explicit nulls in the example; Swagger's
+                // model serializer otherwise omits nullable DTO properties.
+                op.responses["200"]?.content?.get("application/json")?.addExamples("ranking",Example().summary("전액 투자자와 미소진자의 현재 성과").value(io.swagger.v3.core.util.Json.mapper().readTree("""
+                    {
+                      "group":"ALL", "asOf":"2026-10-26T10:00:00Z", "snapshotVersion":2, "count":2,
+                      "items":[
+                        {"rank":1,"investorId":"example-completed","alias":"김민수","kind":"PARTICIPANT","teamId":1,"score":97,
+                         "contributions":[
+                           {"teamId":2,"serviceName":"서비스 A","teamRank":1,"investedAmount":700000,"pointsPerUnit":10,"score":70},
+                           {"teamId":3,"serviceName":"서비스 B","teamRank":2,"investedAmount":300000,"pointsPerUnit":9,"score":27}]},
+                        {"rank":null,"investorId":"example-unspent","alias":"이서연","kind":"STAFF","teamId":null,"score":0,"contributions":[]}
+                      ]
+                    }
+                """)))
             }
             op.responses["429"]?.addHeaderObject("Retry-After",io.swagger.v3.oas.models.headers.Header().description("재시도까지 기다릴 초 수(정수). 이 시간이 지난 뒤 재호출하세요.").schema(Schema<Int>().type("integer")))
             op.responses["503"]?.addHeaderObject("Retry-After",io.swagger.v3.oas.models.headers.Header().description("현재 구현은 5초. 투자 결과가 불확실하면 같은 요청 키로 확인하세요.").schema(Schema<Int>().type("integer")))
