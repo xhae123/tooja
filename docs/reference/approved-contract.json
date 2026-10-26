@@ -4124,6 +4124,263 @@
           }
         }
       }
+    },
+    "/api/v1/admin/investor-rankings": {
+      "get": {
+        "tags": [
+          "03 관리자"
+        ],
+        "summary": "[관리자] 투자자 성과 순위",
+        "description": "**사용 시점**: 관리자가 현재 투자자 성과 순위를 확인하거나 새로고침할 때 호출해요. 관리자 세션이 필요하고 GET이므로 CSRF 토큰은 필요 없어요. 투자 접수 중·중지 중 모두 조회할 수 있어요.\n\n**입력**: group은 선택이며 생략하면 ALL(전체)이에요. PARTICIPANT는 참가자, STAFF는 운영팀 투자자예요. 대소문자를 구분하며 빈 값·공백·다른 값은 422예요. 다른 쿼리 키와 같은 키의 중복 전달도 422예요.\n\n**성공 결과**: 한 DB 스냅샷의 전체 투자로 팀 순위와 점수를 계산해요. 그룹은 출력 대상과 개인 순위에만 적용하므로 그룹을 바꿔도 같은 사람의 점수는 같아요. 투자금 10만원당 팀 1~10등은 +10~+1점, 11~20등은 -1~-10점이에요. 투자한 팀별 점수의 합이 개인 score예요. 팀 동점은 1·1·3이며 같은 순위는 같은 배점이에요. 0원 팀은 이 성과 계산에서 공동 20등으로 취급해요. 기존 공개 팀 대시보드의 순위 규칙은 변경하지 않아요.\n\n100만원을 전부 투자한 사람끼리만 선택 그룹 안에서 순위를 매겨요. 개인 동점도 1·1·3이에요. 미소진자는 점수는 계산하지만 rank는 명시적으로 null이에요. 투자가 없으면 score=0, contributions=[]예요. 순위가 있는 사람을 먼저, 미소진자를 나중에 표시하며 각 구간은 점수 내림차순·이름 오름차순·ID 오름차순이에요. 관리자·삭제된 투자자는 목록에서 제외해요. 결과가 없으면 items=[], count=0으로 성공해요. 페이지네이션은 없어요.\n\ncontributions는 투자 대상 팀·현재 팀 순위·투자액·10만원당 배점·획득 점수이며 팀 번호순이에요. 잔액·지급액·소진 상태·코드는 반환하지 않아요. asOf는 읽기 스냅샷을 확보한 기준 시각(UTC), snapshotVersion은 그 스냅샷의 투자 버전이에요. 조회마다 다시 계산하고 Cache-Control: no-store로 반환해요. 조회는 돈·거래·접수 상태를 변경하거나 결과를 저장하지 않아요. DB 접근 실패 시 503, 그 외 예기치 않은 계산 실패는 500이며 빈 결과로 대체하지 않아요.",
+        "operationId": "getInvestorRankings",
+        "parameters": [
+          {
+            "name": "group",
+            "in": "query",
+            "description": "선택. 생략=ALL(전체), PARTICIPANT=참가자, STAFF=운영팀 투자자. 출력 대상과 개인 순위에만 적용하며 팀 배점과 개인 점수는 전체 투자 기준이에요. 빈 값·중복·대소문자 불일치는 422예요.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "ALL",
+              "enum": [
+                "ALL",
+                "PARTICIPANT",
+                "STAFF"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "현재 성과 계산 성공. 미소진자는 rank=null, 투자 내역이 없으면 score=0/contributions=[]. 대상이 없으면 items=[], count=0. 잔액은 반환하지 않아요.",
+            "headers": {
+              "Cache-Control": {
+                "description": "no-store. 결과를 저장하지 않고 조회마다 다시 계산해요.",
+                "schema": {
+                  "type": "string",
+                  "default": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestorRankings"
+                },
+                "examples": {
+                  "ranking": {
+                    "summary": "전액 투자자와 미소진자의 현재 성과",
+                    "value": {
+                      "group": "ALL",
+                      "asOf": "2026-10-26T10:00:00Z",
+                      "snapshotVersion": 2,
+                      "count": 2,
+                      "items": [
+                        {
+                          "rank": 1,
+                          "investorId": "example-completed",
+                          "alias": "김민수",
+                          "kind": "PARTICIPANT",
+                          "teamId": 1,
+                          "score": 97,
+                          "contributions": [
+                            {
+                              "teamId": 2,
+                              "serviceName": "서비스 A",
+                              "teamRank": 1,
+                              "investedAmount": 700000,
+                              "pointsPerUnit": 10,
+                              "score": 70
+                            },
+                            {
+                              "teamId": 3,
+                              "serviceName": "서비스 B",
+                              "teamRank": 2,
+                              "investedAmount": 300000,
+                              "pointsPerUnit": 9,
+                              "score": 27
+                            }
+                          ]
+                        },
+                        {
+                          "rank": null,
+                          "investorId": "example-unspent",
+                          "alias": "이서연",
+                          "kind": "STAFF",
+                          "teamId": null,
+                          "score": 0,
+                          "contributions": []
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "**SESSION_EXPIRED** — 이 API의 역할 세션이 유효하지 않음 AND (해당 역할 쿠키가 있거나 반대 역할의 유효 세션도 없음). 로그인 화면으로 이동.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "SESSION_EXPIRED": {
+                    "summary": "SESSION_EXPIRED",
+                    "description": "이 API의 역할 세션이 유효하지 않음 AND (해당 역할 쿠키가 있거나 반대 역할의 유효 세션도 없음). 로그인 화면으로 이동.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "다시 로그인해 주세요.",
+                        "details": {}
+                      },
+                      "requestId": "req_example"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "**FORBIDDEN** — 필요한 세션 쿠키 없음 AND 반대 역할로만 로그인함, 또는 요구 역할의 계정이 비활성 상태임.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "FORBIDDEN",
+                    "description": "필요한 세션 쿠키 없음 AND 반대 역할로만 로그인함, 또는 요구 역할의 계정이 비활성 상태임.",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "message": "이 역할의 로그인 권한이 필요합니다.",
+                        "details": {}
+                      },
+                      "requestId": "req_example"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "**RATE_LIMITED** — 직전 60초 내 통과 요청이 보호 API는 역할+계정당 180회, 공개 API는 서버 연결 주소당 30,000회 이상. 운영 WAF는 클라이언트 IP당 60초 동안 30,000건을 초과하면 60초 제한. 로그인·CSRF 준비에는 이 서버 제한을 적용하지 않음.",
+            "headers": {
+              "Retry-After": {
+                "description": "재시도까지 기다릴 초 수(정수). 이 시간이 지난 뒤 재호출하세요.",
+                "schema": {}
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "RATE_LIMITED",
+                    "description": "직전 60초 내 통과 요청이 보호 API는 역할+계정당 180회, 공개 API는 서버 연결 주소당 30,000회 이상. 운영 WAF는 클라이언트 IP당 60초 동안 30,000건을 초과하면 60초 제한. 로그인·CSRF 준비에는 이 서버 제한을 적용하지 않음.",
+                    "value": {
+                      "error": {
+                        "code": "RATE_LIMITED",
+                        "message": "요청이 많습니다. 잠시 후 다시 시도해 주세요.",
+                        "details": {}
+                      },
+                      "requestId": "req_example"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "**VALIDATION_FAILED** — group 외 쿼리 키 존재 OR 동일 키가 2번 이상 전달됨 OR group이 전달됨 AND ALL/PARTICIPANT/STAFF 중 어느 값과도 정확히 일치하지 않음(빈 값·공백·소문자 포함). group 생략은 ALL로 정상 처리.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "VALIDATION_FAILED",
+                    "description": "group 외 쿼리 키 존재 OR 동일 키가 2번 이상 전달됨 OR group이 전달됨 AND ALL/PARTICIPANT/STAFF 중 어느 값과도 정확히 일치하지 않음(빈 값·공백·소문자 포함). group 생략은 ALL로 정상 처리.",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "입력값을 확인해 주세요.",
+                        "details": {}
+                      },
+                      "requestId": "req_example"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "**INTERNAL_ERROR** — 성과 계산 중 저장소 예외 외 예상하지 못한 실행 예외 발생. 잘못된 0점이나 빈 목록으로 대체하지 않아요.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "description": "성과 계산 중 저장소 예외 외 예상하지 못한 실행 예외 발생. 잘못된 0점이나 빈 목록으로 대체하지 않아요.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "처리 중 오류가 발생했습니다. 결과를 다시 확인해 주세요.",
+                        "details": {}
+                      },
+                      "requestId": "req_example"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "**SERVICE_UNAVAILABLE** — 성과 계산을 위한 DB 읽기 중 저장소 접근 예외 발생. HTTP 503과 Retry-After: 5를 반환하며 빈 목록으로 대체하지 않아요.",
+            "headers": {
+              "Retry-After": {
+                "description": "현재 구현은 5초. 투자 결과가 불확실하면 같은 요청 키로 확인하세요.",
+                "schema": {}
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "SERVICE_UNAVAILABLE": {
+                    "summary": "SERVICE_UNAVAILABLE",
+                    "description": "성과 계산을 위한 DB 읽기 중 저장소 접근 예외 발생. HTTP 503과 Retry-After: 5를 반환하며 빈 목록으로 대체하지 않아요.",
+                    "value": {
+                      "error": {
+                        "code": "SERVICE_UNAVAILABLE",
+                        "message": "저장소에 연결할 수 없습니다. 결과를 다시 확인해 주세요.",
+                        "details": {}
+                      },
+                      "requestId": "req_example"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -4821,6 +5078,147 @@
             "description": "오류 보고용 HTTP 요청 추적 ID. X-Request-ID 헤더와 같습니다."
           }
         }
+      },
+      "InvestorRanking": {
+        "type": "object",
+        "properties": {
+          "rank": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "선택 그룹 내 전액 투자자 순위(1·1·3). 미소진자는 필드를 생략하지 않고 null로 반환해요."
+          },
+          "investorId": {
+            "type": "string",
+            "description": "서버 내부 투자자 ID. 로그인 코드는 응답에 포함하지 않습니다."
+          },
+          "alias": {
+            "type": "string",
+            "description": "사전 등록한 투자자 이름. 관리자 화면에서 수정하지 않습니다."
+          },
+          "kind": {
+            "type": "string",
+            "description": "PARTICIPANT=참가자, STAFF=운영팀 투자자. 운영팀 투자자는 관리자 권한이 없습니다.",
+            "enum": [
+              "PARTICIPANT",
+              "STAFF"
+            ]
+          },
+          "teamId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "투자자의 소속 팀 번호. 운영팀 투자자는 null이에요."
+          },
+          "score": {
+            "type": "integer",
+            "format": "int32",
+            "description": "현재 팀 배점으로 계산한 개인 총점. 음수도 가능하며 실제 돈이나 잔액이 아니에요."
+          },
+          "contributions": {
+            "type": "array",
+            "description": "팀별 점수 계산 근거. 팀 번호 오름차순이며 투자 내역이 없으면 빈 배열이에요.",
+            "items": {
+              "$ref": "#/components/schemas/ScoreContribution"
+            }
+          }
+        },
+        "required": [
+          "alias",
+          "contributions",
+          "investorId",
+          "kind",
+          "rank",
+          "score",
+          "teamId"
+        ]
+      },
+      "InvestorRankings": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "type": "string",
+            "enum": [
+              "ALL",
+              "PARTICIPANT",
+              "STAFF"
+            ]
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "description": "읽기 스냅샷을 확보한 기준 시각 UTC. 같은 응답의 팀·개인 점수는 같은 스냅샷에서 계산해요."
+          },
+          "snapshotVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "투자 커밋마다 증가하는 버전. 조회 시각과 구분합니다."
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32",
+            "description": "이 응답 목록의 전체 항목 수. 페이지네이션은 없습니다."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvestorRanking"
+            }
+          }
+        },
+        "required": [
+          "asOf",
+          "count",
+          "group",
+          "items",
+          "snapshotVersion"
+        ]
+      },
+      "ScoreContribution": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "실제 투자한 대상 팀 번호. 투자자의 소속 팀과 달라요."
+          },
+          "serviceName": {
+            "type": "string",
+            "description": "부스의 서비스 표시 이름."
+          },
+          "teamRank": {
+            "type": "integer",
+            "format": "int32",
+            "description": "전체 투자 유치액 기준 팀 경쟁 순위(1·1·3). 0원 팀은 이 계산에서 공동 20등이에요."
+          },
+          "investedAmount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "해당 투자자가 이 팀에 투자한 금액(원)."
+          },
+          "pointsPerUnit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "투자금 10만원당 배점. 1~10등은 11-rank, 11~20등은 10-rank예요."
+          },
+          "score": {
+            "type": "integer",
+            "format": "int32",
+            "description": "(investedAmount / 100000) × pointsPerUnit."
+          }
+        },
+        "required": [
+          "investedAmount",
+          "pointsPerUnit",
+          "score",
+          "serviceName",
+          "teamId",
+          "teamRank"
+        ]
       }
     },
     "securitySchemes": {
