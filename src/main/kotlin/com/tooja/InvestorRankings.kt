@@ -16,7 +16,7 @@ data class InvestorRankings(
 )
 
 data class InvestorRanking(
-    @field:Schema(description="선택한 그룹의 전액 투자자끼리 매긴 경쟁 순위(1·1·3). 미소진자는 명시적으로 null입니다.", nullable=true, requiredMode=Schema.RequiredMode.REQUIRED)
+    @field:Schema(description="선택한 그룹에서 1회 이상 투자한 사람의 경쟁 순위(1·1·3). 잔액과 무관하며, 투자 내역이 없는 사람만 null입니다.", nullable=true, requiredMode=Schema.RequiredMode.REQUIRED)
     val rank: Int?,
     val investorId: String,
     val alias: String,
@@ -35,9 +35,8 @@ data class ScoreContribution(
     val score: Int
 )
 
-// These inputs are internal. In particular, the balance is used for eligibility only,
-// and never serialized as part of the ranking response.
-internal data class RankingInvestor(val id: String, val alias: String, val kind: String, val teamId: Int?, val balance: Int)
+// Eligibility comes from the committed investment ledger, not the account balance.
+internal data class RankingInvestor(val id: String, val alias: String, val kind: String, val teamId: Int?)
 internal data class RankingInvestment(val investorId: String, val teamId: Int, val amount: Int)
 
 internal object InvestorRankingPolicy {
@@ -67,20 +66,20 @@ internal object InvestorRankingPolicy {
             }
         }
         val sorted = selected.sortedWith(
-            compareBy<RankingInvestor> { it.balance != 0 }
+            compareBy<RankingInvestor> { scores.getValue(it.id).isEmpty() }
                 .thenByDescending { scores.getValue(it.id).sumOf { score -> score.score } }
                 .thenBy { it.alias }
                 .thenBy { it.id }
         )
-        var completedCount = 0
+        var rankedCount = 0
         var previousScore: Int? = null
         var rank = 0
         return sorted.map { investor ->
             val contributions = scores.getValue(investor.id)
             val score = contributions.sumOf { it.score }
-            val investorRank = if (investor.balance == 0) {
-                completedCount++
-                if (previousScore != score) rank = completedCount
+            val investorRank = if (contributions.isNotEmpty()) {
+                rankedCount++
+                if (previousScore != score) rank = rankedCount
                 previousScore = score
                 rank
             } else null
@@ -106,9 +105,9 @@ class InvestorRankingService(private val db: Database, private val clock: Clock)
             val version = db.jdbc.queryForObject("SELECT version FROM metadata WHERE id=1", Long::class.java)!!
             val asOf = clock.instant()
             val teams = db.jdbc.queryForList("SELECT id,name FROM teams ORDER BY id")
-            val investors = db.jdbc.queryForList("SELECT id,alias,kind,team_id,balance FROM accounts WHERE role='INVESTOR' AND deleted_at IS NULL").map {
+            val investors = db.jdbc.queryForList("SELECT id,alias,kind,team_id FROM accounts WHERE role='INVESTOR' AND deleted_at IS NULL").map {
                 RankingInvestor(it["id"].toString(), it["alias"].toString(), it["kind"].toString(),
-                    (it["team_id"] as Number?)?.toInt(), (it["balance"] as Number).toInt())
+                    (it["team_id"] as Number?)?.toInt())
             }
             val investments = db.jdbc.queryForList("SELECT account_id,team_id,amount FROM investments").map {
                 RankingInvestment(it["account_id"].toString(), (it["team_id"] as Number).toInt(), (it["amount"] as Number).toInt())

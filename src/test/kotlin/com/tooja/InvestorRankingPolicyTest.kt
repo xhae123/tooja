@@ -14,8 +14,8 @@ class InvestorRankingPolicyTest {
         Allure.label("suite", "투자자 성과 순위")
     }
 
-    private fun person(id: String, balance: Int=0, kind: String="PARTICIPANT", name: String=id) =
-        RankingInvestor(id, name, kind, if (kind == "PARTICIPANT") 1 else null, balance)
+    private fun person(id: String, kind: String="PARTICIPANT", name: String=id) =
+        RankingInvestor(id, name, kind, if (kind == "PARTICIPANT") 1 else null)
     private fun team(id: Int, rank: Int) = RankingRow(rank, id, "팀$id", 100000L)
 
     @ParameterizedTest(name="Given 팀 {0}등 When 10만원당 배점 계산 Then {1}점")
@@ -64,18 +64,60 @@ class InvestorRankingPolicyTest {
         }
     }
 
-    @Test @DisplayName("Given 미소진 70점·전액 -97점·미투자 0점 When 정렬 Then 전액만 1등, 나머지 null")
+    @Test @DisplayName("Given 일부 투자 70점·전액 -97점·미투자 0점 When 정렬 Then 투자자는 1·2등, 미투자만 null")
     fun eligibilityAndNegativeScores() {
-        Steps.step("Given 미소진자 점수가 전액 투자자보다 높고 미투자자도 있음")
+        Steps.step("Given 70만원 투자자 70점·100만원 투자자 -97점·미투자자 0점")
         val rows = Steps.step("When 순위 계산") {
-            InvestorRankingPolicy.calculate(RankingGroup.ALL,listOf(person("partial",300000),person("negative"),person("none",1000000)),
+            InvestorRankingPolicy.calculate(RankingGroup.ALL,listOf(person("partial"),person("negative"),person("none")),
                 listOf(team(2,1),team(3,20),team(4,19)), listOf(RankingInvestment("partial",2,700000),RankingInvestment("negative",3,700000),RankingInvestment("negative",4,300000)))
         }
-        Steps.step("Then 전액 투자자는 음수여도 1등, 미소진자는 뒤에서 점수순이며 null") {
-            assertThat(rows.map { it.investorId }).containsExactly("negative","partial","none")
-            assertThat(rows.map { it.rank }).containsExactly(1,null,null)
-            assertThat(rows.map { it.score }).containsExactly(-97,70,0)
+        Steps.step("Then 투자자는 점수순 1·2등, 미투자자는 음수 점수 투자자보다 뒤에 null") {
+            assertThat(rows.map { it.investorId }).containsExactly("partial","negative","none")
+            assertThat(rows.map { it.rank }).containsExactly(1,2,null)
+            assertThat(rows.map { it.score }).containsExactly(70,-97,0)
             assertThat(rows.last().contributions).isEmpty()
+        }
+    }
+
+    @Test @DisplayName("Given 10만원을 한 번 투자 When 계산 Then 잔액이 남아도 순위 부여")
+    fun firstInvestmentIsRanked() {
+        Steps.step("Given A는 1등 팀에 10만원을 한 번 투자하고 B는 미투자")
+        val rows = Steps.step("When 성과 순위를 계산") {
+            InvestorRankingPolicy.calculate(RankingGroup.ALL, listOf(person("B"),person("A")),
+                listOf(team(2,1)),listOf(RankingInvestment("A",2,100000)))
+        }
+        Steps.step("Then A는 10점·1등, B는 0점·순위 null") {
+            assertThat(rows.map { it.investorId }).containsExactly("A","B")
+            assertThat(rows.map { it.rank }).containsExactly(1,null)
+            assertThat(rows.map { it.score }).containsExactly(10,0)
+        }
+    }
+
+    @Test @DisplayName("Given 일부 투자자의 합계 0점·음수 점수와 미투자자 When 계산 Then 점수 부호와 무관하게 투자자만 순위 부여")
+    fun zeroAndNegativePartialScoresAreRanked() {
+        Steps.step("Given A는 1등·20등에 각각 10만원, B는 20등에 10만원, C는 미투자")
+        val rows = Steps.step("When 성과 순위를 계산") {
+            InvestorRankingPolicy.calculate(RankingGroup.ALL,listOf(person("C"),person("B"),person("A")),
+                listOf(team(2,1),team(3,20)),listOf(RankingInvestment("A",2,100000),RankingInvestment("A",3,100000),RankingInvestment("B",3,100000)))
+        }
+        Steps.step("Then A 0점·1등, B -10점·2등, C 0점·순위 null") {
+            assertThat(rows.map { it.investorId }).containsExactly("A","B","C")
+            assertThat(rows.map { it.rank }).containsExactly(1,2,null)
+            assertThat(rows.map { it.score }).containsExactly(0,-10,0)
+        }
+    }
+
+    @Test @DisplayName("Given 일부 투자자와 전액 투자자가 동점 When 계산 Then 투자액과 무관하게 공동 순위 1·1·3")
+    fun partialAndFullInvestorsShareCompetitionRanks() {
+        Steps.step("Given A는 10만원 투자·10점, B는 100만원 투자·10점, C는 10만원 투자·9점")
+        val rows = Steps.step("When 개인 순위를 계산") {
+            InvestorRankingPolicy.calculate(RankingGroup.ALL,listOf(person("C"),person("B"),person("A")),
+                listOf(team(2,1),team(3,10),team(4,2),team(5,10)),listOf(RankingInvestment("A",2,100000),
+                    RankingInvestment("B",3,700000),RankingInvestment("B",5,300000),RankingInvestment("C",4,100000)))
+        }
+        Steps.step("Then A와 B는 공동 1등, C는 3등") {
+            assertThat(rows.map { it.rank }).containsExactly(1,1,3)
+            assertThat(rows.map { it.score }).containsExactly(10,10,9)
         }
     }
 
