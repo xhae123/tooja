@@ -4,8 +4,6 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Bean
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
-import org.springframework.web.servlet.HandlerInterceptor
-import org.springframework.web.method.HandlerMethod
 import org.springframework.web.bind.annotation.*
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -19,10 +17,6 @@ import jakarta.servlet.http.HttpServletResponse
 import java.time.Clock
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-
-@Target(AnnotationTarget.FUNCTION,AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.RUNTIME)
-annotation class Access(val role: String)
 
 @Component
 @org.springframework.core.annotation.Order(-100)
@@ -47,33 +41,14 @@ class RateLimits(private val clock: Clock) {
     fun clear()=buckets.clear()
 }
 @Configuration
-class WebConfig(private val auth: AuthService,private val rates: RateLimits,
+class WebConfig(private val security: ApiSecurityInterceptor,
     @org.springframework.beans.factory.annotation.Value("\${app.acme-root:}") private val acmeRoot: String): WebMvcConfigurer {
     override fun addResourceHandlers(registry: org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry) {
         if(acmeRoot.isNotBlank()) registry.addResourceHandler("/.well-known/acme-challenge/**")
             .addResourceLocations(java.nio.file.Path.of(acmeRoot,".well-known","acme-challenge").toUri().toString().trimEnd('/')+"/")
     }
     override fun addInterceptors(registry: InterceptorRegistry) {
-        registry.addInterceptor(object: HandlerInterceptor {
-            override fun preHandle(req: HttpServletRequest,res: HttpServletResponse,handler: Any): Boolean {
-                if(!req.requestURI.startsWith("/api/v1/") || handler !is HandlerMethod) return true
-                val access=handler.getMethodAnnotation(Access::class.java) ?: handler.beanType.getAnnotation(Access::class.java)
-                val role=if(req.requestURI.startsWith("/api/v1/admin/"))"admin" else "investor"
-                if(access!=null) { val session=auth.require(access.role,req);req.setAttribute("principal",session);rates.check("${access.role}:${session.accountId}",180) }
-                else if(req.requestURI.startsWith("/api/v1/public/")) rates.check("public:${req.remoteAddr}",30000)
-                val allowed=when(req.requestURI) {
-                    "/api/v1/admin/investors" -> setOf("q","teamId","kind","spendingStatus")
-                    "/api/v1/admin/investor-rankings" -> setOf("group")
-                    else -> emptySet()
-                }
-                if(req.parameterMap.keys.any { it !in allowed } || req.parameterMap.values.any { it.size!=1 }) throw ApiException(422,"VALIDATION_FAILED","정의되지 않거나 중복된 쿼리 파라미터입니다.",mapOf("fieldErrors" to listOf(mapOf("field" to "query","reason" to "UNKNOWN_OR_DUPLICATE","message" to "허용된 필터를 한 번씩만 보내세요."))))
-                if(req.method in listOf("POST","PATCH","DELETE")) {
-                    if(req.method=="DELETE" && (req.contentLengthLong>0 || req.getHeader("Transfer-Encoding")!=null)) throw ApiException(400,"INVALID_REQUEST","로그아웃에는 본문을 보내지 않습니다.")
-                    auth.verifyCsrf(role,req)
-                }
-                return true
-            }
-        }).addPathPatterns("/api/v1/**")
+        registry.addInterceptor(security)
     }
 }
 @RestControllerAdvice

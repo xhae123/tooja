@@ -32,7 +32,7 @@ class EdgeRequestFilter(private val mapper: ObjectMapper,
                 !req.requestURI.startsWith("/.well-known/acme-challenge/")) {
                 res.status=308;res.setHeader("Location",origin.trimEnd('/')+req.requestURI+(req.queryString?.let { "?$it" }?:""));return
             }
-            if(req.requestURI.startsWith("/api/") && req.method in setOf("POST","PATCH","PUT","DELETE")) {
+            if(RequestPaths.isApi(req) && req.method in setOf("POST","PATCH","PUT","DELETE")) {
                 if(req.contentLengthLong>MAX_BODY_BYTES) { reject(req,res);return }
                 val body=req.inputStream.readNBytes(MAX_BODY_BYTES+1)
                 if(body.size>MAX_BODY_BYTES) { reject(req,res);return }

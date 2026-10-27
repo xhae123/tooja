@@ -18,7 +18,7 @@ import java.sql.SQLException
 @org.springframework.core.annotation.Order(-90)
 class InternalMetricsFilter(@Value("\${app.metrics-host-address:172.19.0.1}") private val hostAddress: String = "172.19.0.1"): OncePerRequestFilter() {
     override fun doFilterInternal(req: HttpServletRequest,res: HttpServletResponse,chain: FilterChain) {
-        if ((req.requestURI == "/actuator" || req.requestURI.startsWith("/actuator/metrics")) &&
+        if (RequestPaths.isPrivateActuator(req) &&
             req.remoteAddr !in setOf("127.0.0.1","::1",hostAddress)) {
             res.status = 404
             return

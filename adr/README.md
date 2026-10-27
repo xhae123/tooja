@@ -46,3 +46,5 @@
 - [0033 사전 등록 이름 조회와 이름 수정 기능 제거](0033-read-only-investor-name.md)
 
 - [0034 조회 시점의 팀 순위로 투자자 성과 계산](0034-live-investor-performance-ranking.md)
+
+- [0035 실제 컨트롤러의 선언으로 API 접근 권한 검사](0035-controller-bound-api-security.md)

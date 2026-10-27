@@ -59,6 +59,198 @@ abstract class ApiContractIntegrationTest {
         val r=call("POST","/api/v1/$role/session","{\"code\":\"$code\"}");assertThat(r.status).isEqualTo(200);val j=json(r);tokens[role]=j["csrfToken"].asText();return j
     }
     fun invest(team: Int,amount: Int,key: String=UUID.randomUUID().toString())=call("POST","/api/v1/investor/investments","{\"teamId\":$team,\"amount\":$amount}",key)
+    // URI overload preserves encoded request targets, just as a real HTTP client sends them.
+    private fun pathCall(method: String,path: String,body: String?=null,role: String="admin",csrf: Boolean=true,
+        origin: String?="http://localhost:8080",key: String?=null): MockHttpServletResponse {
+        val request=MockMvcRequestBuilders.request(org.springframework.http.HttpMethod.valueOf(method),java.net.URI.create(path))
+        origin?.let { request.header("Origin",it) }
+        if(cookies.isNotEmpty()) request.cookie(*cookies.values.toTypedArray())
+        if(body!=null) request.contentType("application/json").content(body)
+        if(csrf) tokens[role]?.let { request.header("X-CSRF-Token",it) }
+        key?.let { request.header("Idempotency-Key",it) }
+        val response=mvc.perform(request).andReturn().response
+        response.cookies.forEach { if(it.maxAge==0) cookies.remove(it.name) else cookies[it.name]=it }
+        return response
+    }
+
+    @ParameterizedTest(name="Given 미로그인 When {0} 관리자 조회·중지 Then 401·상태 불변")
+    @ValueSource(strings=["/api/v1","/api/v1;review","/api;review/v1","/%61pi/v1","/api/%76%31"])
+    fun pathUnauthenticated(prefix: String) {
+        Steps.step("Given 로그인·Origin·CSRF 토큰이 없는 요청")
+        Steps.step("When URL 표기를 바꾸어 관리자 API 호출 / Then 모두 401") {
+            for(endpoint in listOf("overview","investors","investors/inv_001","investor-rankings?group=ALL")) {
+                failure(pathCall("GET","$prefix/admin/$endpoint",origin=null),401,"SESSION_EXPIRED")
+            }
+            failure(pathCall("PATCH","$prefix/admin/investment-status","{\"status\":\"PAUSED\"}",origin=null),401,"SESSION_EXPIRED")
+        }
+        Steps.step("Then 접수 RUNNING·잔액·거래·요청 결과 불변") {
+            assertThat(service.investmentStatus().status).isEqualTo(InvestmentMode.RUNNING)
+            unchangedMoney()
+        }
+    }
+
+    @ParameterizedTest(name="Given 투자자만 로그인 When {0} 관리자 API 호출 Then 403")
+    @ValueSource(strings=["/api/v1","/api/v1;review","/api;review/v1","/%61pi/v1","/api/%76%31"])
+    fun pathWrongRole(prefix: String) {
+        Steps.step("Given 투자자 세션만 있고 관리자 세션 없음") { login() }
+        Steps.step("When URL 표기를 바꾸어 관리자 조회·중지 / Then FORBIDDEN") {
+            failure(pathCall("GET","$prefix/admin/overview"),403,"FORBIDDEN")
+            failure(pathCall("PATCH","$prefix/admin/investment-status","{\"status\":\"PAUSED\"}"),403,"FORBIDDEN")
+        }
+        Steps.step("Then 접수 상태 불변") { assertThat(service.investmentStatus().status).isEqualTo(InvestmentMode.RUNNING) }
+    }
+
+    @ParameterizedTest(name="Given 관리자·잘못된 CSRF 또는 Origin When {0} 중지 요청 Then 403·상태 불변")
+    @ValueSource(strings=["/api/v1","/api/v1;review","/api;review/v1","/%61pi/v1","/api/%76%31"])
+    fun pathCsrfRequired(prefix: String) {
+        Steps.step("Given 유효한 관리자 세션") { login("admin","4821") }
+        Steps.step("When CSRF 누락·다른 Origin·Origin 누락 / Then CSRF_INVALID") {
+            failure(pathCall("PATCH","$prefix/admin/investment-status","{\"status\":\"PAUSED\"}",csrf=false),403,"CSRF_INVALID")
+            failure(pathCall("PATCH","$prefix/admin/investment-status","{\"status\":\"PAUSED\"}",origin="https://other.example"),403,"CSRF_INVALID")
+            failure(pathCall("PATCH","$prefix/admin/investment-status","{\"status\":\"PAUSED\"}",origin=null),403,"CSRF_INVALID")
+        }
+        Steps.step("Then 접수 RUNNING·변경 버전 0 유지") {
+            assertThat(service.investmentStatus().status).isEqualTo(InvestmentMode.RUNNING)
+            assertThat(service.investmentStatus().revision).isZero()
+        }
+    }
+
+    @ParameterizedTest(name="Given 정상 관리자 인증·CSRF When {0} 중지·조회 Then 정상 동작")
+    @ValueSource(strings=["/api/v1","/api/v1;review","/api;review/v1","/%61pi/v1","/api/%76%31"])
+    fun pathAuthorizedAdmin(prefix: String) {
+        Steps.step("Given 관리자 세션과 해당 역할 CSRF 토큰") { login("admin","4821") }
+        val response=Steps.step("When 정상 중지 요청") { pathCall("PATCH","$prefix/admin/investment-status","{\"status\":\"PAUSED\"}") }
+        Steps.step("Then 관리자 역할로 CSRF를 검사하고 정상 처리") {
+            assertThat(response.status).isEqualTo(200)
+            assertThat(service.investmentStatus().status).isEqualTo(InvestmentMode.PAUSED)
+            assertThat(pathCall("GET","$prefix/admin/overview").status).isEqualTo(200)
+        }
+    }
+
+    @ParameterizedTest(name="Given 관리자·필터 When {0} 목록 조회 Then 실제 매핑 기준 필터 검사")
+    @ValueSource(strings=["/api/v1","/api/v1;review","/api;review/v1","/%61pi/v1","/api/%76%31"])
+    fun pathQueryValidation(prefix: String) {
+        login("admin","4821")
+        Steps.step("When 정상 kind·group 필터로 조회 / Then 해당 그룹만 반환") {
+            val investors=pathCall("GET","$prefix/admin/investors?kind=STAFF")
+            assertThat(investors.status).isEqualTo(200)
+            assertThat(json(investors)["count"].asInt()).isEqualTo(1)
+            val ranking=pathCall("GET","$prefix/admin/investor-rankings?group=STAFF")
+            assertThat(ranking.status).isEqualTo(200)
+            assertThat(json(ranking)["count"].asInt()).isEqualTo(1)
+        }
+        Steps.step("When 미정의·중복·잘못된 필터 / Then URL 표기와 관계없이 422") {
+            for(query in listOf("?unknown=1","?group=ALL&group=STAFF","?group=BAD")) {
+                failure(pathCall("GET","$prefix/admin/investor-rankings$query"),422,"VALIDATION_FAILED")
+            }
+        }
+    }
+
+    @ParameterizedTest(name="Given 투자자 인증 When {0} 투자 확정 Then CSRF·본인 정보·잔액 처리 유지")
+    @ValueSource(strings=["/api/v1","/api/v1;review","/api;review/v1","/%61pi/v1","/api/%76%31"])
+    fun pathInvestorWrite(prefix: String) {
+        login()
+        val key=UUID.randomUUID().toString()
+        Steps.step("When CSRF 없이 투자 / Then 거절·차감 없음") {
+            failure(pathCall("POST","$prefix/investor/investments","{\"teamId\":2,\"amount\":100000}",role="investor",csrf=false,key=key),403,"CSRF_INVALID")
+            unchangedMoney()
+        }
+        val response=Steps.step("When 같은 키로 정상 CSRF 투자") {
+            pathCall("POST","$prefix/investor/investments","{\"teamId\":2,\"amount\":100000}",role="investor",key=key)
+        }
+        Steps.step("Then 정상 영수증·요청 복구·조회, 한 번만 차감") {
+            assertThat(response.status).isEqualTo(201)
+            assertThat(service.investor("inv_001").balance).isEqualTo(900000)
+            assertThat(json(pathCall("GET","$prefix/investor/investment-requests/$key"))["status"].asText()).isEqualTo("SUCCEEDED")
+            for(endpoint in listOf("me","teams","teams/2","investments")) {
+                assertThat(pathCall("GET","$prefix/investor/$endpoint").status).isEqualTo(200)
+            }
+        }
+    }
+
+    @ParameterizedTest(name="Given 공개 로그인 흐름 When {0} 경로로 준비·로그인·로그아웃 Then 역할별 CSRF 유지")
+    @ValueSource(strings=["/api/v1","/api/v1;review","/api;review/v1","/%61pi/v1","/api/%76%31"])
+    fun pathLoginAndLogout(prefix: String) {
+        for(role in listOf("investor","admin")) {
+            Steps.step("Given $role 로그인 전 컨텍스트 준비") {
+                val prepared=pathCall("GET","$prefix/$role/csrf",role=role)
+                assertThat(prepared.status).isEqualTo(200)
+                tokens[role]=json(prepared)["csrfToken"].asText()
+            }
+            Steps.step("When 올바른 코드와 역할 CSRF로 로그인 / Then 정상 세션") {
+                val code=if(role=="admin")"4821" else "0037"
+                val response=pathCall("POST","$prefix/$role/session","{\"code\":\"$code\"}",role=role)
+                assertThat(response.status).isEqualTo(200)
+                tokens[role]=json(response)["csrfToken"].asText()
+                assertThat(pathCall("GET","$prefix/$role/session",role=role).status).isEqualTo(200)
+            }
+            Steps.step("When 로그아웃 / Then 204, 해당 역할 세션만 종료") {
+                assertThat(pathCall("DELETE","$prefix/$role/session",role=role).status).isEqualTo(204)
+                failure(pathCall("GET","$prefix/$role/session",role=role),401,"SESSION_EXPIRED")
+            }
+        }
+    }
+
+    @ParameterizedTest(name="Given 외부 요청 When {0} 메트릭 접근 Then 위조 헤더와 관계없이 404")
+    @ValueSource(strings=["/actuator","/actuator/","/actuator/metrics","/actuator;review/metrics","/%61ctuator/metrics","/actuator/%6detrics","/actuator/metrics;review/jvm.memory.used"])
+    fun pathPrivateMetrics(path: String) {
+        Steps.step("Given 외부 IP와 위조한 내부 전달 헤더")
+        val request=MockMvcRequestBuilders.get(java.net.URI.create(path)).with { it.remoteAddr="203.0.113.1";it }
+            .header("X-Forwarded-For","172.19.0.1")
+        val response=Steps.step("When 내부 지표에 접근") { mvc.perform(request).andReturn().response }
+        Steps.step("Then 404, 지표 본문 없음") { assertThat(response.status).isEqualTo(404);assertThat(response.contentAsString).isEmpty() }
+    }
+
+    @Test @DisplayName("Given 내부 수집기·외부 헬스체크 When 경로 표기를 바꾸어 조회 Then 정상 접근 유지")
+    fun pathMonitoringStillWorks() {
+        Steps.step("When 내부 수집기가 메트릭 조회 / Then 수집 가능") {
+            for(path in listOf("/actuator/metrics","/actuator;review/metrics","/%61ctuator/metrics")) {
+                val response=mvc.perform(MockMvcRequestBuilders.get(java.net.URI.create(path)).with { it.remoteAddr="172.19.0.1";it }).andReturn().response
+                assertThat(response.status).isEqualTo(200)
+                assertThat(json(response)["names"].size()).isPositive()
+            }
+        }
+        Steps.step("When 외부에서 health 조회 / Then 기존 공개 헬스체크 정상") {
+            for(path in listOf("/actuator/health","/actuator;review/health","/%61ctuator/health")) {
+                val response=mvc.perform(MockMvcRequestBuilders.get(java.net.URI.create(path)).with { it.remoteAddr="203.0.113.1";it }).andReturn().response
+                assertThat(response.status).isEqualTo(200)
+                assertThat(json(response)["status"].asText()).isEqualTo("UP")
+            }
+        }
+    }
+    @Test @DisplayName("Given 등록된 API 22개 When 접근 정책 확인 Then 보호14개·공개8개 모두 명시")
+    fun pathPoliciesDeclared() {
+        val context=mvc.dispatcherServlet.webApplicationContext!!
+        val mappings=context.getBean("requestMappingHandlerMapping",org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping::class.java)
+        val handlers=mappings.handlerMethods.filterKeys { mapping -> mapping.patternValues.any { it.startsWith("/api/v1/") } }.values
+        Steps.step("Given 실제 등록된 컨트롤러 작업 22개") { assertThat(handlers).hasSize(22) }
+        var protected=0
+        var public=0
+        Steps.step("When 각 작업의 명시적 접근 정책 확인") {
+            handlers.forEach { handler ->
+                val access=handler.getMethodAnnotation(Access::class.java) ?: org.springframework.core.annotation.AnnotatedElementUtils.findMergedAnnotation(handler.beanType,Access::class.java)
+                val open=handler.getMethodAnnotation(PublicAccess::class.java) ?: org.springframework.core.annotation.AnnotatedElementUtils.findMergedAnnotation(handler.beanType,PublicAccess::class.java)
+                assertThat((access!=null) xor (open!=null)).describedAs(handler.toString()).isTrue()
+                if(access!=null) protected++ else public++
+            }
+        }
+        Steps.step("Then 보호14개·공개8개, 정책이 빠진 API 없음") { assertThat(protected).isEqualTo(14);assertThat(public).isEqualTo(8) }
+    }
+    @Test @DisplayName("Given 같은 관리자·여러 URL 표기 When 180회 조회 후 재요청 Then 모두 같은 한도로 429")
+    fun pathRateLimitShared() {
+        login("admin","4821")
+        val prefixes=listOf("/api/v1","/api/v1;review","/api;review/v1","/%61pi/v1","/api/%76%31")
+        Steps.step("Given URL 표기를 섞어서 같은 관리자 계정으로 180회 조회") {
+            repeat(180) { index -> assertThat(pathCall("GET","${prefixes[index%prefixes.size]}/admin/session").status).isEqualTo(200) }
+        }
+        Steps.step("When 다른 URL 표기로 추가 조회 / Then 전부 429·Retry-After") {
+            prefixes.forEach { prefix ->
+                val response=pathCall("GET","$prefix/admin/session")
+                failure(response,429,"RATE_LIMITED")
+                assertThat(response.getHeader("Retry-After")).isEqualTo("60")
+            }
+        }
+    }
     @Test @DisplayName("Given 실제 앱과 DB When 내부 metrics를 조회 Then JVM·HTTP·연결 풀과 DB 작업 시간이 제공된다")
     fun internalMetrics() {
         Steps.step("When 실제 DB 읽기와 HTTP 요청을 수행") { service.dashboard();call("GET","/api/v1/public/investment-status") }
