@@ -46,7 +46,7 @@ class ApiDocumentation {
         val fieldDescriptions=mapOf("investmentStatus" to "전체 투자 접수 상태. PAUSED이면 팀별 상태가 AVAILABLE이어도 투자 버튼을 차단합니다.", "csrfToken" to "이 역할의 쓰기 요청 X-CSRF-Token 헤더 값. 로그인 성공 후 새 값으로 교체합니다.", "expiresAt" to "세션 만료 시각(UTC). 발급 후 48시간 고정이며 조회로 연장되지 않습니다.", "serviceName" to "부스의 서비스 표시 이름.", "description" to "부스의 서비스 소개.", "myInvestmentAmount" to "이 투자자가 이 팀에 확정한 투자액. 아직 투자하지 않았으면 0.", "investmentId" to "확정 거래 ID. 내 거래 상세 경로에서 사용합니다.", "confirmedAt" to "거래 확정 시각(UTC).", "raisedAmount" to "이 팀에 확정된 전체 투자액 합계(원).", "count" to "이 응답 목록의 전체 항목 수. 페이지네이션은 없습니다.", "totalIssuedAmount" to "등록한 투자자에게 지급한 금액 합계(원). 로그인 여부와 무관합니다.", "totalInvestedAmount" to "확정 투자 금액 합계(원).", "totalBalance" to "지급받은 투자자의 남은 투자금 합계(원).", "completedCount" to "잔액이 0원인 투자자 수.", "unspentCount" to "지급 후 잔액이 남은 투자자 수.", "originalHttpStatus" to "저장된 투자 거절의 HTTP 상태. 이 결과 조회 자체는 HTTP 200입니다.", "message" to "화면 표시용 오류 안내. 분기 처리는 message가 아닌 code로 하세요.", "details" to "추가 오류 정보. 입력 오류는 fieldErrors 배열을 포함할 수 있습니다.", "investorId" to "서버 내부 투자자 ID. 로그인 코드는 응답에 포함하지 않습니다.", "alias" to "사전 등록한 투자자 이름. 관리자 화면에서 수정하지 않습니다.", "kind" to "PARTICIPANT=참가자, STAFF=운영팀 투자자. 운영팀 투자자는 관리자 권한이 없습니다.", "teamId" to "참가자 소속 또는 투자 대상 팀 번호. 운영팀 투자자의 소속은 null입니다.", "issuedAmount" to "투자자 등록 시 지급한 100만원. 로그인으로 재지급하지 않습니다.", "investedAmount" to "확정한 투자 금액 합계, 원 단위.", "balance" to "현재 남은 투자금, 원 단위. 등록 직후 100만원입니다.", "spendingStatus" to "UNSPENT=잔액 남음, COMPLETED=전액 투자 완료. 로그인 여부와 무관합니다.", "amount" to "원 단위 정수. 10만~70만원, 10만원 단위.", "asOf" to "응답 데이터의 조회 기준 시각 UTC. 화면에서 한국 시간으로 표시합니다.", "currentBalance" to "과거 거래 당시가 아닌 조회 시점의 현재 잔액.", "balanceAfterInvestment" to "해당 거래 확정 당시 잔액. 멱등 재전송도 같은 영수증을 반환합니다.", "snapshotVersion" to "투자 커밋마다 증가하는 버전. 조회 시각과 구분합니다.", "registeredInvestorCount" to "사전 등록한 전체 투자자 수. 미로그인자 포함, 관리자 제외.", "investedInvestorCount" to "1회 이상 투자한 고유 투자자 수.", "rank" to "경쟁 순위 1·1·3. 화면 배열 인덱스로 순위를 계산하지 마세요.", "allowedAmounts" to "현재 잔액 이하의 선택 가능 금액. 화면은 7개 버튼을 모두 표시하고 나머지는 비활성화합니다.", "investmentState" to "SELF_TEAM → ALREADY_INVESTED → BALANCE_EXHAUSTED → AVAILABLE 우선순위.", "requestId" to "오류 보고용 HTTP 요청 추적 ID. X-Request-ID 헤더와 같습니다.")
         api.components.schemas?.values?.forEach { schema -> schema.properties?.forEach { (name,property) -> fieldDescriptions[name]?.let { property.description=it } } }
         api.components.schemas?.get("InvestorRanking")?.properties?.apply {
-            get("rank")?.apply { description="선택 그룹 내 전액 투자자 순위(1·1·3). 미소진자는 필드를 생략하지 않고 null로 반환해요."; nullable=true; types=setOf("integer","null") }
+            get("rank")?.apply { description="선택 그룹에서 1회 이상 투자한 사람의 순위(1·1·3). 잔액·점수 부호와 무관해요. 투자 내역이 없는 사람만 필드를 생략하지 않고 null로 반환해요."; nullable=true; types=setOf("integer","null") }
             get("score")?.description="현재 팀 배점으로 계산한 개인 총점. 음수도 가능하며 실제 돈이나 잔액이 아니에요."
             get("teamId")?.apply { description="투자자의 소속 팀 번호. 운영팀 투자자는 null이에요."; nullable=true; types=setOf("integer","null") }
             get("kind")?.setEnum(listOf("PARTICIPANT","STAFF"))
@@ -161,7 +161,7 @@ class ApiDocumentation {
                 "createInvestment" -> "투자 확정 또는 같은 키·본문의 기존 성공 영수증 복구. 추가 차감 없음."
                 "getInvestmentRequest" -> "요청 결과 조회 성공. SUCCEEDED와 REJECTED 모두 HTTP 200이며 본문의 status로 구분."
                 "listMyInvestments","listInvestors" -> "목록 조회 성공. 일치 항목이 없으면 빈 배열과 count=0."
-                "getInvestorRankings" -> "현재 성과 계산 성공. 미소진자는 rank=null, 투자 내역이 없으면 score=0/contributions=[]. 대상이 없으면 items=[], count=0. 잔액은 반환하지 않아요."
+                "getInvestorRankings" -> "현재 성과 계산 성공. 1회 이상 투자하면 순위가 있어요. 투자 내역이 없는 사람만 rank=null, score=0, contributions=[]. 대상이 없으면 items=[], count=0. 잔액은 반환하지 않아요."
                 "investorLogin" -> "투자자 로그인 성공. 등록 시 지급된 잔액 유지. 세션 쿠키 발급 및 CSRF 토큰 교체."
                 "adminLogin" -> "관리자 로그인 성공. 세션 쿠키 발급 및 CSRF 토큰 교체. 투자금 지급 없음."
                 else -> "조회 또는 변경 성공. 아래 Schema에서 필드별 의미를 확인하세요."
@@ -170,15 +170,14 @@ class ApiDocumentation {
                 op.responses["200"]?.addHeaderObject("Cache-Control",io.swagger.v3.oas.models.headers.Header().description("no-store. 결과를 저장하지 않고 조회마다 다시 계산해요.").schema(Schema<String>().apply { types=setOf("string");setDefault("no-store") }))
                 // JsonNode preserves explicit nulls in the example; Swagger's
                 // model serializer otherwise omits nullable DTO properties.
-                op.responses["200"]?.content?.get("application/json")?.addExamples("ranking",Example().summary("전액 투자자와 미소진자의 현재 성과").value(io.swagger.v3.core.util.Json.mapper().readTree("""
+                op.responses["200"]?.content?.get("application/json")?.addExamples("ranking",Example().summary("10만원만 투자해도 1등, 투자하지 않은 사람만 순위 없음").value(io.swagger.v3.core.util.Json.mapper().readTree("""
                     {
-                      "group":"ALL", "asOf":"2026-10-26T10:00:00Z", "snapshotVersion":2, "count":2,
+                      "group":"ALL", "asOf":"2026-10-27T10:00:00Z", "snapshotVersion":1, "count":2,
                       "items":[
-                        {"rank":1,"investorId":"example-completed","alias":"김민수","kind":"PARTICIPANT","teamId":1,"score":97,
+                        {"rank":1,"investorId":"example-invested","alias":"김민수","kind":"PARTICIPANT","teamId":1,"score":10,
                          "contributions":[
-                           {"teamId":2,"serviceName":"서비스 A","teamRank":1,"investedAmount":700000,"pointsPerUnit":10,"score":70},
-                           {"teamId":3,"serviceName":"서비스 B","teamRank":2,"investedAmount":300000,"pointsPerUnit":9,"score":27}]},
-                        {"rank":null,"investorId":"example-unspent","alias":"이서연","kind":"STAFF","teamId":null,"score":0,"contributions":[]}
+                           {"teamId":2,"serviceName":"서비스 A","teamRank":1,"investedAmount":100000,"pointsPerUnit":10,"score":10}]},
+                        {"rank":null,"investorId":"example-not-invested","alias":"이서연","kind":"STAFF","teamId":null,"score":0,"contributions":[]}
                       ]
                     }
                 """)))

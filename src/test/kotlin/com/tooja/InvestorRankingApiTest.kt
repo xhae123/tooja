@@ -115,7 +115,11 @@ abstract class InvestorRankingApiContractTest {
                 if(group!="ALL") assertThat(row["kind"].asText()).isEqualTo(group)
             }
             assertThat(item(all,"inv_001")["rank"].asInt()).isEqualTo(2)
-            if(group=="PARTICIPANT") assertThat(item(result,"inv_001")["rank"].asInt()).isEqualTo(1)
+            assertThat(item(all,"inv_002")["rank"].asInt()).isEqualTo(3)
+            if(group=="PARTICIPANT") {
+                assertThat(item(result,"inv_001")["rank"].asInt()).isEqualTo(1)
+                assertThat(item(result,"inv_002")["rank"].asInt()).isEqualTo(2)
+            }
             if(group=="STAFF") {
                 assertThat(result["items"][0]["teamId"].isNull).isTrue()
                 assertThat(result["items"][0]["rank"].asInt()).isEqualTo(1)
@@ -123,22 +127,45 @@ abstract class InvestorRankingApiContractTest {
         }
     }
 
-    @Test @DisplayName("Given 전액 -점수·미소진 +점수 When 조회 Then 전액 먼저, 미소진 순위 null")
-    fun unspentNeverRanked() {
+    @Test @DisplayName("Given 전액 음수·일부 투자 양수·미투자 When 조회 Then 투자자는 점수순, 미투자만 null")
+    fun partialAndFullInvestorsRankTogether() {
         // Direct fixtures represent a valid committed ledger across 20 teams, while
         // keeping setup independent of the scoring implementation.
         seedLedgerForNegativeScore()
         signIn()
-        val result=Steps.step("When 전액 투자자와 미소진자를 함께 조회") { json(getRanking()) }
-        Steps.step("Then 전액 투자자는 음수여도 순위가 있고 미소진자는 뒤에 null로 표시") {
+        val result=Steps.step("When 참가자의 현재 성과 순위를 조회") { json(getRanking("?group=PARTICIPANT")) }
+        Steps.step("Then 일부 투자자가 1등, 전액 투자자는 음수여도 2등, 미투자자만 null") {
             val completed=item(result,"inv_001")
             val partial=item(result,"inv_002")
             assertThat(completed["score"].asInt()).isNegative()
-            assertThat(completed["rank"].asInt()).isEqualTo(1)
+            assertThat(completed["rank"].asInt()).isEqualTo(2)
             assertThat(partial["score"].asInt()).isPositive()
-            assertThat(partial["rank"].isNull).isTrue()
-            assertThat(result["items"][0]["investorId"].asText()).isEqualTo("inv_001")
+            assertThat(partial["rank"].asInt()).isEqualTo(1)
+            assertThat(result["items"].take(2).map { it["investorId"].asText() }).containsExactly("inv_002","inv_001")
+            assertThat(result["items"].drop(2).all { it["rank"].isNull && it["contributions"].isEmpty }).isTrue()
+        }
+    }
+
+    @Test @DisplayName("Given 미투자자 When 첫 10만원 투자 후 성과 조회 Then 잔액 90만원이어도 1등")
+    fun firstInvestmentCreatesRank() {
+        signIn()
+        val before=json(getRanking())
+        Steps.step("Given 투자 전에는 점수 0·순위 null·내역 없음") {
+            assertThat(item(before,"inv_001")["rank"].isNull).isTrue()
+            assertThat(item(before,"inv_001")["contributions"].isEmpty).isTrue()
+        }
+        val result=Steps.step("When 10만원을 처음 투자하고 성과 API를 다시 조회") {
+            invest("inv_001",2,100000)
+            json(getRanking())
+        }
+        Steps.step("Then 10점·1등으로 바뀌고 나머지 미투자자는 null, 잔액·소진 상태는 응답에서 제외") {
+            val row=item(result,"inv_001")
+            assertThat(row["rank"].asInt()).isEqualTo(1)
+            assertThat(row["score"].asInt()).isEqualTo(10)
+            assertThat(row["contributions"].single()["investedAmount"].asInt()).isEqualTo(100000)
             assertThat(result["items"].drop(1).all { it["rank"].isNull }).isTrue()
+            assertThat(jdbc.queryForObject("SELECT balance FROM accounts WHERE id='inv_001'",Int::class.java)).isEqualTo(900000)
+            assertThat(result.toString()).doesNotContain("balance","spendingStatus")
         }
     }
 
@@ -314,11 +341,10 @@ abstract class InvestorRankingApiContractTest {
         }
     }
 
-    @ParameterizedTest(name="Given 전액 여부 {0} When 읽기 중 투자 커밋 Then 점수·내역·순위 자격·버전 모두 같은 스냅샷")
+    @ParameterizedTest(name="Given 기존 투자 있음={0} When 읽기 중 투자 커밋 Then 점수·내역·순위 자격·버전 모두 같은 스냅샷")
     @ValueSource(booleans=[true,false])
-    fun concurrentInvestmentSnapshot(alreadyCompleted: Boolean) {
-        invest("inv_001",2,700000)
-        if(alreadyCompleted) invest("inv_001",6,300000)
+    fun concurrentInvestmentSnapshot(alreadyInvested: Boolean) {
+        if(alreadyInvested) invest("inv_001",2,700000)
         signIn()
         val captured=CountDownLatch(1)
         val release=CountDownLatch(1)
@@ -334,20 +360,21 @@ abstract class InvestorRankingApiContractTest {
             check(captured.await(15,TimeUnit.SECONDS))
             Steps.step("When 순위 읽기가 열린 상태에서 추가 투자를 커밋") {
                 pool.submit<InvestmentReceipt> {
-                    if(alreadyCompleted) invest("staff_001",6,700000) else invest("inv_001",6,300000)
+                    if(alreadyInvested) invest("inv_001",6,300000) else invest("inv_001",2,100000)
                 }.get(10,TimeUnit.SECONDS)
             }
             release.countDown()
             val old=json(reading.get(10,TimeUnit.SECONDS))
             val current=json(getRanking())
             Steps.step("Then 새 투자 전후가 섞이지 않으며 쓰기는 읽기 종료 전에 완료") {
-                assertThat(old["snapshotVersion"].asLong()).isEqualTo(if(alreadyCompleted)2 else 1)
-                assertThat(item(old,"inv_001")["score"].asInt()).isEqualTo(if(alreadyCompleted)97 else 70)
-                assertThat(current["snapshotVersion"].asLong()).isEqualTo(if(alreadyCompleted)3 else 2)
-                assertThat(item(current,"inv_001")["score"].asInt()).isEqualTo(if(alreadyCompleted)93 else 97)
-                assertThat(item(old,"inv_001")["rank"].isNull).isEqualTo(!alreadyCompleted)
+                assertThat(old["snapshotVersion"].asLong()).isEqualTo(if(alreadyInvested)1 else 0)
+                assertThat(item(old,"inv_001")["score"].asInt()).isEqualTo(if(alreadyInvested)70 else 0)
+                assertThat(current["snapshotVersion"].asLong()).isEqualTo(if(alreadyInvested)2 else 1)
+                assertThat(item(current,"inv_001")["score"].asInt()).isEqualTo(if(alreadyInvested)97 else 10)
+                assertThat(item(old,"inv_001")["rank"].isNull).isEqualTo(!alreadyInvested)
                 assertThat(item(current,"inv_001")["rank"].asInt()).isEqualTo(1)
-                assertThat(item(old,"inv_001")["contributions"].size()).isEqualTo(if(alreadyCompleted)2 else 1)
+                assertThat(item(old,"inv_001")["contributions"].size()).isEqualTo(if(alreadyInvested)1 else 0)
+                assertThat(item(current,"inv_001")["contributions"].size()).isEqualTo(if(alreadyInvested)2 else 1)
             }
         } finally { release.countDown();pool.shutdownNow() }
     }
@@ -413,6 +440,10 @@ abstract class InvestorRankingApiContractTest {
             assertThat(example.has("teamId") && example["teamId"].isNull).isTrue()
             assertThat(spec["components"]["schemas"]["InvestorRanking"]["properties"].has("balance")).isFalse()
             assertThat(spec["components"]["schemas"]["InvestorRanking"]["properties"]["rank"]["description"].asText()).contains("null")
+            assertThat(operation["description"].asText()).contains("1회 이상", "0점이나 음수", "투자 내역이 전혀 없는 사람만 rank=null")
+            val firstExample=operation["responses"]["200"]["content"]["application/json"]["examples"]["ranking"]["value"]["items"][0]
+            assertThat(firstExample["rank"].asInt()).isEqualTo(1)
+            assertThat(firstExample["contributions"].single()["investedAmount"].asInt()).isEqualTo(100000)
             val rowSchema=spec["components"]["schemas"]["InvestorRanking"]
             assertThat(rowSchema["properties"]["rank"]["type"].map { it.asText() }).containsExactlyInAnyOrder("integer","null")
             assertThat(rowSchema["properties"]["teamId"]["type"].map { it.asText() }).containsExactlyInAnyOrder("integer","null")
