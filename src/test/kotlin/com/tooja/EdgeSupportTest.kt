@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.*
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import jakarta.servlet.http.HttpServletRequest
@@ -39,5 +41,19 @@ class EdgeSupportTest {
     fun acmeException() {
         val req=MockHttpServletRequest("GET","/.well-known/acme-challenge/public-token").apply {addHeader("X-Forwarded-Proto","http")}
         var passed=false;filter.doFilter(req,MockHttpServletResponse()) { _,_->passed=true };assertThat(passed).isTrue()
+    }
+    @ParameterizedTest(name="Given 1MiB 초과 본문 When {0} API에 전송 Then 경로 표기와 관계없이 413")
+    @ValueSource(strings=["/api/v1/admin/investment-status","/%61pi/v1/admin/investment-status","/api;review/v1/admin/investment-status","/api/%76%31/admin/investment-status"])
+    fun pathBodyLimit(uri: String) {
+        Steps.step("Given 1MiB보다 큰 PATCH 본문")
+        val req=MockHttpServletRequest("PATCH",uri).apply { setContent(ByteArray(EdgeRequestFilter.MAX_BODY_BYTES+1)) }
+        val res=MockHttpServletResponse()
+        var passed=false
+        Steps.step("When API 본문 제한 필터 실행") { filter.doFilter(req,res) { _,_->passed=true } }
+        Steps.step("Then 컨트롤러로 전달하지 않고 413") {
+            assertThat(res.status).isEqualTo(413)
+            assertThat(passed).isFalse()
+            assertThat(res.contentAsString).contains("REQUEST_BODY_TOO_LARGE")
+        }
     }
 }

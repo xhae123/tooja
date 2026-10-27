@@ -20,20 +20,26 @@ fun requestKey(value: String): String { if(!value.matches(Regex("^[0-9a-fA-F]{8}
 @RequestMapping(produces=["application/json"])
 @Tag(name="01 로그인",description="모두 허용. 투자자와 관리자 코드는 숫자 4자리 문자열이며 두 세션은 독립적입니다.")
 class AuthController(private val auth: AuthService,private val service: InvestmentService) {
+    @PublicAccess("investor")
     @GetMapping("/api/v1/investor/csrf") @Operation(operationId="investorCsrf",summary="[모두 허용] 투자자 로그인 준비",description=OperationDescriptions.INVESTOR_CSRF)
     fun investorCsrf(req: HttpServletRequest,res: HttpServletResponse): Csrf=auth.csrf("investor",req,res)
+    @PublicAccess("admin")
     @GetMapping("/api/v1/admin/csrf") @Operation(operationId="adminCsrf",summary="[모두 허용] 관리자 로그인 준비",description=OperationDescriptions.ADMIN_CSRF)
     fun adminCsrf(req: HttpServletRequest,res: HttpServletResponse): Csrf=auth.csrf("admin",req,res)
+    @PublicAccess("investor")
     @PostMapping("/api/v1/investor/session") @Operation(operationId="investorLogin",summary="[모두 허용] 투자자 코드 로그인",description=OperationDescriptions.INVESTOR_LOGIN)
     fun investorLogin(@Valid @RequestBody body: LoginInput,req: HttpServletRequest,res: HttpServletResponse): InvestorSession { val s=auth.login("investor",body.code,req,res);return InvestorSession(service.investor(s.accountId),s.csrf,s.expiresAt) }
+    @PublicAccess("admin")
     @PostMapping("/api/v1/admin/session") @Operation(operationId="adminLogin",summary="[모두 허용] 관리자 코드 로그인",description=OperationDescriptions.ADMIN_LOGIN)
     fun adminLogin(@Valid @RequestBody body: LoginInput,req: HttpServletRequest,res: HttpServletResponse): AdminSession { val s=auth.login("admin",body.code,req,res);return AdminSession(Admin(s.accountId),s.csrf,s.expiresAt) }
     @GetMapping("/api/v1/investor/session") @Access("investor") @SecurityRequirement(name="InvestorSession") @Operation(operationId="investorSession",summary="[투자자] 로그인 상태 복구",description=OperationDescriptions.INVESTOR_SESSION)
     fun investorSession(req: HttpServletRequest): InvestorSession { val s=req.getAttribute("principal") as SessionRecord;return InvestorSession(service.investor(s.accountId),s.csrf,s.expiresAt) }
     @GetMapping("/api/v1/admin/session") @Access("admin") @SecurityRequirement(name="AdminSession") @Operation(operationId="adminSession",summary="[관리자] 로그인 상태 복구",description=OperationDescriptions.ADMIN_SESSION)
     fun adminSession(req: HttpServletRequest): AdminSession { val s=req.getAttribute("principal") as SessionRecord;return AdminSession(Admin(s.accountId),s.csrf,s.expiresAt) }
+    @PublicAccess("investor")
     @DeleteMapping("/api/v1/investor/session") @Operation(operationId="investorLogout",summary="[모두 허용] 투자자 로그아웃",description=OperationDescriptions.INVESTOR_LOGOUT)
     fun investorLogout(req: HttpServletRequest,res: HttpServletResponse): ResponseEntity<Void> { auth.logout("investor",req,res);return ResponseEntity.noContent().build() }
+    @PublicAccess("admin")
     @DeleteMapping("/api/v1/admin/session") @Operation(operationId="adminLogout",summary="[모두 허용] 관리자 로그아웃",description=OperationDescriptions.ADMIN_LOGOUT)
     fun adminLogout(req: HttpServletRequest,res: HttpServletResponse): ResponseEntity<Void> { auth.logout("admin",req,res);return ResponseEntity.noContent().build() }
 }
@@ -82,6 +88,7 @@ class AdminController(private val service: InvestmentService, private val rankin
     fun detail(@PathVariable investorId: String): InvestorDetail { val h=service.history(investorId);return InvestorDetail(h.investor,h.items,h.asOf) }
 }
 @RestController @RequestMapping(produces=["application/json"]) @Tag(name="04 공개 대시보드")
+@PublicAccess
 class PublicController(private val service: InvestmentService) {
     @GetMapping("/api/v1/public/investment-status") @Operation(operationId="getInvestmentStatus",summary="[모두 허용] 투자 접수 상태 확인",description=OperationDescriptions.GET_INVESTMENT_STATUS)
     fun investmentStatus(): InvestmentStatus=service.investmentStatus()
