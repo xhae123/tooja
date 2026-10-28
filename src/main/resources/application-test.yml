@@ -1,7 +1,5 @@
 app:
   reports-enabled: true
   secure-cookies: false
+  allowed-origins: http://localhost:8080,https://line1thon.vercel.app
   pepper: isolated-test-pepper
-spring:
-  thymeleaf:
-    cache: false

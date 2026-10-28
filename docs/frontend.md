@@ -1,18 +1,19 @@
 # 프론트엔드 연동을 시작할 때 봐주세요
 
-서버 주소는 **https://api.leafeep.com**이에요. API 경로는 `/api/v1`로 시작해요.
+프론트엔드 주소는 **https://line1thon.vercel.app**이고 브라우저는 같은 출처의 `/api/v1`을 호출해요. Vercel이 이 경로를 `https://api.leafeep.com` API로 전달해요.
 
 ## 먼저 여기부터 열어보세요
 
-- [테스트 화면·더미 계정](https://api.leafeep.com/): 데스크톱 오른쪽에 팀·이름·코드가 있어요. 실제 API를 호출하는 임시 화면이라 화면 흐름도 확인할 수 있어요.
 - [API 문서](https://api.leafeep.com/api-docs): 요청 값, 응답 필드, 오류가 나는 조건은 여기를 봐주세요.
 - [테스트 리포트](https://api.leafeep.com/reports/allure/): 현재 배포의 단위·통합 테스트 결과예요. E2E는 포함하지 않아요.
+
+API 호스트의 예전 SSR 화면과 공개 테스트 계정 명단은 제거했어요. `https://api.leafeep.com/`은 화면을 제공하지 않으며, 관리자 계정 조회 API는 관리자 세션이 있어야 사용할 수 있어요.
 
 한국 IP에서만 접속할 수 있어요. 해외 VPN이나 해외에 둔 프록시 서버를 사용하면 `403`이 나올 수 있어요.
 
 ## 로컬에서는 프록시를 연결해 주세요
 
-브라우저가 OCI 주소를 직접 호출하면 로그인 쿠키와 CSRF 검사 때문에 연동이 안 돼요. **브라우저는 로컬 개발 서버에 요청하고, 개발 서버가 OCI로 전달**하도록 해주세요.
+브라우저에서 API 호스트를 직접 호출하지 마세요. 운영 프론트는 Vercel의 같은 출처 `/api/v1` 프록시를 사용하고, 서버는 `APP_ALLOWED_ORIGINS=https://line1thon.vercel.app`을 허용해요. 로컬 Vite 개발은 아래처럼 같은 Origin을 전달하고 로컬 HTTP에서만 Secure 쿠키 속성을 제거해요.
 
 Vite를 쓰면 아래 설정을 넣으면 돼요.
 
@@ -20,6 +21,7 @@ Vite를 쓰면 아래 설정을 넣으면 돼요.
 import { defineConfig } from 'vite';
 
 const api = 'https://api.leafeep.com';
+const frontendOrigin = 'https://line1thon.vercel.app';
 
 export default defineConfig({
   server: {
@@ -29,7 +31,7 @@ export default defineConfig({
         changeOrigin: true,
         configure(proxy) {
           proxy.on('proxyReq', (request) => {
-            request.setHeader('Origin', api);
+            request.setHeader('Origin', frontendOrigin);
           });
           // 로컬 HTTP 개발 서버에서만 Secure를 제거해 쿠키를 전달해요.
           // 운영 환경에서는 이 처리를 사용하지 마세요.
@@ -45,7 +47,7 @@ export default defineConfig({
 });
 ```
 
-프론트 코드에서는 `fetch('/api/v1/investor/csrf', { credentials: 'same-origin' })`처럼 **상대 경로**로 호출해 주세요. `/api/v1`을 제거하거나 다른 경로로 바꾸면 안 돼요. 다른 개발 서버를 쓰더라도 경로·쿠키·Origin을 전달하는 규칙은 같아요.
+프론트 코드에서는 `fetch('/api/v1/investor/csrf', { credentials: 'same-origin' })`처럼 **상대 경로**로 호출해 주세요. `/api/v1`을 제거하거나 다른 경로로 바꾸면 안 돼요. 운영 CSRF 허용 Origin은 Vercel 프로덕션 주소 하나이며, 미리보기 도메인은 허용되지 않아요.
 
 ## 로그인은 이 순서로 하면 돼요
 

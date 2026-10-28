@@ -11,7 +11,12 @@ import java.time.Instant
 data class SessionRecord(val accountId: String, val role: String, val csrf: String, val expiresAt: Instant)
 @Service
 class AuthService(private val db: Database, private val secrets: Secrets, private val clock: Clock,
-    @Value("\${app.origin}") val origin: String, @Value("\${app.secure-cookies}") private val secure: Boolean) {
+    @Value("\${app.allowed-origins}") allowedOriginsConfig: String,
+    @Value("\${app.secure-cookies}") private val secure: Boolean) {
+    private val allowedOrigins=allowedOriginsConfig.split(',').map(String::trim).filter(String::isNotEmpty).toSet()
+
+    init { require(allowedOrigins.isNotEmpty()) { "At least one app.allowed-origins entry is required" } }
+
     fun session(role: String, request: HttpServletRequest): SessionRecord? {
         val raw=request.cookies?.firstOrNull { it.name=="${role}_session" }?.value ?: return null
         val rows=db.jdbc.queryForList("SELECT s.*,a.deleted_at,a.role AS account_role FROM sessions s JOIN accounts a ON a.id=s.account_id WHERE s.token_hash=?",secrets.hash(raw))
@@ -39,7 +44,7 @@ class AuthService(private val db: Database, private val secrets: Secrets, privat
         return Csrf(token)
     }
     fun verifyCsrf(role: String, request: HttpServletRequest) {
-        if(request.getHeader("Origin")!=origin) throw ApiException(403,"CSRF_INVALID","허용된 화면에서 다시 시도해 주세요.")
+        if(request.getHeader("Origin") !in allowedOrigins) throw ApiException(403,"CSRF_INVALID","허용된 화면에서 다시 시도해 주세요.")
         val provided=request.getHeader("X-CSRF-Token") ?: throw ApiException(403,"CSRF_INVALID","인증 준비 정보를 다시 받아 주세요.")
         val current=session(role,request)
         val expected=current?.csrf ?: run {
