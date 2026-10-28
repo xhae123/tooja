@@ -313,6 +313,23 @@ abstract class ApiContractIntegrationTest {
     }
     @ParameterizedTest(name="존재하지 않거나 반대 역할 코드 {0}은 같은 인증 실패") @ValueSource(strings=["9999","4821"])
     fun wrongCode(code: String) { tokens["investor"]=json(call("GET","/api/v1/investor/csrf"))["csrfToken"].asText();val r=Steps.step("When 투자자 로그인에 $code 전송") { call("POST","/api/v1/investor/session","{\"code\":\"$code\"}") };failure(r,401,"AUTHENTICATION_FAILED");assertThat(service.overview().total.totalIssuedAmount).isEqualTo(5000000) }
+
+    @Test @DisplayName("Vercel 프론트 Origin에서 투자자 CSRF 로그인 허용")
+    fun vercelOriginCanLogin() {
+        tokens["investor"]=json(call("GET","/api/v1/investor/csrf"))["csrfToken"].asText()
+        val response=call("POST","/api/v1/investor/session","{\"code\":\"0037\"}",origin="https://line1thon.vercel.app")
+        assertThat(response.status).isEqualTo(200)
+        assertThat(json(response)["investor"]["investorId"].asText()).isEqualTo("inv_001")
+    }
+
+    @Test @DisplayName("구 SSR·공개 더미 계정 화면 제거, 관리자 계정 조회는 세션 필수")
+    fun legacyPagesAndPublicAccountLookupAreUnavailable() {
+        val root=mvc.perform(MockMvcRequestBuilders.get("/")).andReturn().response
+        assertThat(root.status).isEqualTo(404)
+        assertThat(root.contentAsString).doesNotContain("테스트 바로가기","더미 계정","6096","6867")
+        val adminLookup=mvc.perform(MockMvcRequestBuilders.get("/api/v1/admin/investors")).andReturn().response
+        failure(adminLookup,401,"SESSION_EXPIRED")
+    }
     @Test @DisplayName("두 역할 동시 로그인 후 투자자만 로그아웃하면 관리자 세션은 유지된다") fun independent() {
         login();login("admin","4821");Steps.step("When 투자자만 로그아웃") { assertThat(call("DELETE","/api/v1/investor/session").status).isEqualTo(204) }
         Steps.step("Then 관리자 조회 200, 투자자 조회는 반대 역할만 있어 403") { assertThat(call("GET","/api/v1/admin/overview").status).isEqualTo(200);failure(call("GET","/api/v1/investor/me"),403,"FORBIDDEN") }

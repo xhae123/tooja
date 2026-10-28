@@ -23,6 +23,8 @@ OCI LB+WAF → 앱 VM → private MySQL로 연결해요. 앱의 18080은 loopbac
 
 production 수동 등록 모드는 재시작·재배포 때 데모를 자동 삽입하지 않아요. CODE_PEPPER는 기존 값을 유지해요. 배포 실패 시 이전 앱으로 복귀하더라도 DB는 자동으로 과거 상태로 돌아가지 않아요. 스키마 변경은 이전 버전과의 호환성도 검토해야 해요.
 
+프론트엔드는 `https://line1thon.vercel.app`에서 제공하고 Vercel이 `/api/v1`을 이 API 호스트로 프록시해요. `APP_ORIGIN`은 배포 헬스체크와 HTTPS 정규화용 `https://api.leafeep.com`으로 유지하고, 쓰기 요청의 CSRF Origin은 별도 설정 `APP_ALLOWED_ORIGINS=https://line1thon.vercel.app`으로 제한해요. 예전 API 호스트 SSR 화면과 공개 테스트 계정 목록은 제공하지 않아요. 계정 조회 API는 세션 인증을 유지해요.
+
 Always Free DB는 기본 자동 백업이 1일이고 PITR·수동 OCI 백업·HA를 제공하지 않아요. 운영자가 직접 데이터를 수정할 때에는 일관된 논리 백업과 트랜잭션·전후 검증이 필요해요.
 
 ## 로컬 프론트엔드: Vite 프록시 예시
