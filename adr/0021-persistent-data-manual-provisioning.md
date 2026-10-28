@@ -29,6 +29,6 @@ production + PROVISIONING_MODE=manual로 스키마만 준비하고, Actions 배�
 - [src/main/kotlin/com/tooja/Database.kt](../src/main/kotlin/com/tooja/Database.kt)
 - [src/test/kotlin/com/tooja/ManualProvisioningTest.kt](../src/test/kotlin/com/tooja/ManualProvisioningTest.kt)
 - [deployment/compose.yaml](../deployment/compose.yaml)
-- [AGENTS.md](../AGENTS.md)
+- [CLAUDE.md](../CLAUDE.md)
 
 2026-10-14 변경: 등록 시 계정과 100만원 지급을 같은 트랜잭션에서 처리합니다. 로그인은 재지급하지 않습니다(ADR 0032).

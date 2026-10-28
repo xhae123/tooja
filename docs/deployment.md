@@ -58,7 +58,7 @@ export default defineConfig({
 
 ## 직접 DB 작업과 기록
 
-[AGENTS.md](../AGENTS.md)의 절차를 따라요. 모든 인프라 기록은 로컬 oci-man 스킬의 `infra/tooja/`, DB 작업은 그 안의 `db/`에 보관해요. 실제 데이터·비밀값은 기록이나 공개 저장소·CI artifact에 넣지 않아요.
+[CLAUDE.md](../CLAUDE.md)의 절차를 따라요. 모든 인프라 기록은 로컬 oci-man 스킬의 `infra/tooja/`, DB 작업은 그 안의 `db/`에 보관해요. 실제 데이터·비밀값은 기록이나 공개 저장소·CI artifact에 넣지 않아요.
 
 ## 인증서와 배포 확인
 

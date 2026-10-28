@@ -28,6 +28,6 @@ CI 로그와 별개로 직접 수행한 작업의 목적·전후 상태·검증�
 
 AGENTS.md와 .gitignore에 반영됨. 현재 최초 설정·삭제·배포·더미 삽입·검증 기록이 있습니다.
 
-- [AGENTS.md](../AGENTS.md)
+- [CLAUDE.md](../CLAUDE.md)
 - [.gitignore](../.gitignore)
 - [.dockerignore](../.dockerignore)
