@@ -3,3 +3,7 @@ app:
   secure-cookies: false
   allowed-origins: http://localhost:8080,https://line1thon.vercel.app
   pepper: isolated-test-pepper
+  owner-token: test-owner-token-0123456789abcdef0123456789
+  ingest-token: test-ingest-token
+  ops:
+    scheduling-enabled: false

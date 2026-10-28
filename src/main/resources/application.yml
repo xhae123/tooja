@@ -13,6 +13,9 @@ spring:
     deserialization:
       fail-on-unknown-properties: true
       accept-float-as-int: false
+  thymeleaf:
+    cache: true
+    check-template-location: false
 server:
   port: ${PORT:8080}
   error:
@@ -37,6 +40,19 @@ app:
   pepper: ${CODE_PEPPER:}
   accounts-csv: ${ACCOUNTS_CSV:}
   teams-csv: ${TEAMS_CSV:}
+  owner-token: ${OWNER_TOKEN:}
+  ingest-token: ${INGEST_TOKEN:}
+  trusted-proxy-hops: ${TRUSTED_PROXY_HOPS:1}
+  ops:
+    scheduling-enabled: ${OPS_SCHEDULING:true}
+    sample-interval-ms: 60000
+    collector-interval-ms: 60000
+    heartbeat-gap-factor: 3
+    activity-retention-days: 90
+    samples-retention-days: 30
+    events-retention-days: 365
+    queue-capacity: 10000
+    disk-path: ${OPS_DISK_PATH:./data}
 springdoc:
   swagger-ui:
     path: /api-docs

@@ -48,3 +48,7 @@
 - [0034 조회 시점의 팀 순위로 투자자 성과 계산](0034-live-investor-performance-ranking.md)
 
 - [0035 실제 컨트롤러의 선언으로 API 접근 권한 검사](0035-controller-bound-api-security.md)
+
+- [0036 조회 전용 조물주 콘솔과 DB 활동 기록](0036-owner-console-and-activity-log.md)
+
+- [0037 인프라 지표를 앱 DB에 적재해 서비스 활동과 함께 보기](0037-infra-metrics-in-app-db.md)

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title th:text="${title} + ' · 조물주'">조물주</title>
+    <link rel="stylesheet" href="/owner/assets/owner.css">
+</head>
+<body>
+<nav th:fragment="nav(page)" class="nav">
+    <a class="brand" href="/owner">조물주</a>
+    <a th:classappend="${page=='overview'}?'active'" href="/owner">개요</a>
+    <a th:classappend="${page=='activity'}?'active'" href="/owner/activity">활동 로그</a>
+    <a th:classappend="${page=='accounts'}?'active'" href="/owner/accounts">계정</a>
+    <a th:classappend="${page=='sessions'}?'active'" href="/owner/sessions">세션</a>
+    <a th:classappend="${page=='investments'}?'active'" href="/owner/investments">투자</a>
+    <a th:classappend="${page=='infra'}?'active'" href="/owner/infra">인프라</a>
+    <a th:classappend="${page=='events'}?'active'" href="/owner/events">이벤트</a>
+    <a th:classappend="${page=='errors'}?'active'" href="/owner/errors">오류</a>
+    <form class="logout" method="post" action="/owner/logout"><input type="hidden" name="_csrf" th:value="${csrf}"><button type="submit" class="quiet">로그아웃</button></form>
+</nav>
+<div th:fragment="more(result, base)" th:if="${result.nextCursor != null}" class="more">
+    <a th:href="${base} + 'cursor=' + ${result.nextCursor}">이전 기록 더 보기 →</a>
+</div>
+<table th:fragment="activityTable(rows)" class="grid activity">
+    <thead><tr><th>시각(KST)</th><th>행위</th><th>행위자</th><th>메서드</th><th>경로</th><th>상태</th><th>오류</th><th>대상</th><th>ms</th><th>IP</th><th>Origin</th><th>UA</th><th>requestId</th></tr></thead>
+    <tbody>
+    <tr th:each="r : ${rows}" th:classappend="${r.status >= 500}?'bad':(${r.status >= 400}?'warn':'')">
+        <td th:text="${fmt.time(r.ts)}" th:title="${fmt.iso(r.ts)}"></td>
+        <td><a th:href="@{/owner/activity(action=${r.action})}" th:text="${r.action}"></a></td>
+        <td><span class="role" th:text="${r.actor_role ?: '-'}"></span> <a th:if="${r.account_id != null and r.actor_role != 'OWNER'}" th:href="@{/owner/accounts/{id}(id=${r.account_id})}" th:text="${r.account_id}"></a><span th:if="${r.actor_role == 'OWNER'}">owner</span></td>
+        <td th:text="${r.method}"></td><td class="mono" th:text="${r.route}"></td>
+        <td th:text="${r.status}"></td><td class="mono" th:text="${r.error_code ?: ''}"></td>
+        <td class="mono"><span th:if="${r.team_id != null}" th:text="'팀' + ${r.team_id}"></span> <span th:if="${r.amount != null}" th:text="${fmt.won(r.amount)}"></span> <span th:if="${r.investment_id != null}" th:text="${#strings.abbreviate(r.investment_id, 11)}" th:title="${r.investment_id}"></span></td>
+        <td th:text="${r.duration_ms}"></td>
+        <td class="mono"><a th:href="@{/owner/activity(ip=${r.client_ip})}" th:text="${r.client_ip}"></a><span th:if="${r.client_ip != r.remote_addr}" class="muted" th:text="' via ' + ${r.remote_addr}"></span></td>
+        <td class="mono muted" th:text="${r.origin ?: ''}"></td>
+        <td class="ua" th:text="${r.user_agent ?: ''}" th:title="${r.user_agent}"></td>
+        <td class="mono muted" th:text="${#strings.abbreviate(r.request_id, 13)}" th:title="${r.request_id}"></td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(rows)}"><td colspan="13" class="muted">기록이 없습니다.</td></tr>
+    </tbody>
+</table>
+</body>
+</html>

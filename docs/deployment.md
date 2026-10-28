@@ -25,6 +25,8 @@ production 수동 등록 모드는 재시작·재배포 때 데모를 자동 삽
 
 프론트엔드는 `https://line1thon.vercel.app`에서 제공하고 Vercel이 `/api/v1`을 이 API 호스트로 프록시해요. `APP_ORIGIN`은 배포 헬스체크와 HTTPS 정규화용 `https://api.leafeep.com`으로 유지하고, 쓰기 요청의 CSRF Origin은 별도 설정 `APP_ALLOWED_ORIGINS=https://line1thon.vercel.app`으로 제한해요. 예전 API 호스트 SSR 화면과 공개 테스트 계정 목록은 제공하지 않아요. 계정 조회 API는 세션 인증을 유지해요.
 
+운영자 전용 [조물주 콘솔](owner-console.md) `/owner`는 API 호스트가 직접 그려요. `runtime.env`에 `OWNER_TOKEN`(32자 이상)과 수집기용 `INGEST_TOKEN`, `OPS_DISK_PATH=/app/data`를 추가해야 하며 값은 기록에 남기지 않아요. 토큰이 없으면 `/owner`는 404라 배포 검증의 `/owner/login` 확인이 실패하니, 첫 배포 전에 넣어요. 스키마는 Flyway V3가 테이블만 추가하므로 이전 앱으로 돌아가도 무해해요.
+
 Always Free DB는 기본 자동 백업이 1일이고 PITR·수동 OCI 백업·HA를 제공하지 않아요. 운영자가 직접 데이터를 수정할 때에는 일관된 논리 백업과 트랜잭션·전후 검증이 필요해요.
 
 ## 로컬 프론트엔드: Vite 프록시 예시
