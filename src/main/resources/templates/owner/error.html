@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{owner/layout :: head('오류')}"></head>
+<body>
+<main class="login">
+    <h1>처리할 수 없습니다</h1>
+    <p class="error" th:text="${message}"></p>
+    <p><a href="/owner">개요로 돌아가기</a></p>
+</main>
+</body>
+</html>

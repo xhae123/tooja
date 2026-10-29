@@ -28,10 +28,19 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
         else org.springframework.transaction.TransactionDefinition.ISOLATION_SERIALIZABLE
         propagationBehavior = org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW
     }
+    private val sideTx = TransactionTemplate(tm).apply {
+        propagationBehavior = org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW
+    }
     private val writeLock = ReentrantLock(true)
     fun <T:Any> write(block: () -> T): T = measure("write") { writeLock.withLock { tx.execute { block() }!! } }
     fun <T:Any> read(block: () -> T): T = measure("read") { tx.execute { block() }!! }
     fun <T:Any> snapshot(block: () -> T): T = measure("read") { snapshotTx.execute { block() }!! }
+    // Operational records (activity, samples, events) never share a business transaction.
+    // SQLite opens deferred transactions, so a concurrent commit between a business SELECT and
+    // its UPDATE fails with SQLITE_BUSY_SNAPSHOT; share the write lock there. InnoDB needs no lock.
+    fun <T:Any> sideWrite(block: () -> T): T = measure("ops") {
+        if (mysql) sideTx.execute { block() }!! else writeLock.withLock { sideTx.execute { block() }!! }
+    }
     private fun <T> measure(operation: String,block: () -> T): T = telemetry?.database(operation,block) ?: block()
     val mysql: Boolean get() = env.activeProfiles.contains("mysql")
     private fun insertIgnore(sql: String): String = if (mysql) sql.replace("INSERT OR IGNORE", "INSERT IGNORE") else sql
@@ -50,7 +59,21 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
             "CREATE TABLE IF NOT EXISTS metadata(id INTEGER PRIMARY KEY CHECK(id=1), version INTEGER NOT NULL DEFAULT 0)",
             "INSERT OR IGNORE INTO metadata(id,version) VALUES(1,0)",
             "CREATE TABLE IF NOT EXISTS investment_control(id INTEGER PRIMARY KEY CHECK(id=1), status TEXT NOT NULL CHECK(status IN ('RUNNING','PAUSED')), revision INTEGER NOT NULL DEFAULT 0 CHECK(revision>=0), updated_at TEXT)",
-            "INSERT OR IGNORE INTO investment_control(id,status,revision) VALUES(1,'RUNNING',0)"
+            "INSERT OR IGNORE INTO investment_control(id,status,revision) VALUES(1,'RUNNING',0)",
+            "CREATE TABLE IF NOT EXISTS owner_sessions(token_hash TEXT PRIMARY KEY, csrf TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, revoked_at TEXT, client_ip TEXT NOT NULL, user_agent TEXT)",
+            "CREATE TABLE IF NOT EXISTS activity_log(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, request_id TEXT NOT NULL, method TEXT NOT NULL, route TEXT NOT NULL, status INTEGER NOT NULL, duration_ms INTEGER NOT NULL, actor_role TEXT, account_id TEXT, action TEXT NOT NULL, error_code TEXT, team_id INTEGER, investment_id TEXT, amount INTEGER, origin TEXT, client_ip TEXT NOT NULL, remote_addr TEXT NOT NULL, user_agent TEXT)",
+            "CREATE INDEX IF NOT EXISTS ix_activity_ts ON activity_log(ts)",
+            "CREATE INDEX IF NOT EXISTS ix_activity_action_ts ON activity_log(action,ts)",
+            "CREATE INDEX IF NOT EXISTS ix_activity_account_ts ON activity_log(account_id,ts)",
+            "CREATE INDEX IF NOT EXISTS ix_activity_ip_ts ON activity_log(client_ip,ts)",
+            "CREATE INDEX IF NOT EXISTS ix_activity_status_ts ON activity_log(status,ts)",
+            "CREATE TABLE IF NOT EXISTS infra_samples(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, source TEXT NOT NULL, metric TEXT NOT NULL, sample_value REAL NOT NULL, dims TEXT)",
+            "CREATE INDEX IF NOT EXISTS ix_samples_metric_ts ON infra_samples(metric,ts)",
+            "CREATE INDEX IF NOT EXISTS ix_samples_source_ts ON infra_samples(source,ts)",
+            "CREATE INDEX IF NOT EXISTS ix_samples_ts ON infra_samples(ts)",
+            "CREATE TABLE IF NOT EXISTS system_events(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, type TEXT NOT NULL, detail TEXT)",
+            "CREATE INDEX IF NOT EXISTS ix_events_ts ON system_events(ts)",
+            "CREATE INDEX IF NOT EXISTS ix_events_type_ts ON system_events(type,ts)"
         ).forEach(jdbc::execute)
         }
         require(provisioningMode in listOf("required","manual")) { "Unknown provisioning mode" }
@@ -85,6 +108,6 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
         }
     }
     fun reset() = write {
-        listOf("requests","investments","grants","sessions","contexts","accounts","teams").forEach { jdbc.update("DELETE FROM $it") };jdbc.update("UPDATE metadata SET version=0");jdbc.update("UPDATE investment_control SET status='RUNNING',revision=0,updated_at=NULL WHERE id=1");true
+        listOf("requests","investments","grants","sessions","contexts","accounts","teams","owner_sessions","activity_log","infra_samples","system_events").forEach { jdbc.update("DELETE FROM $it") };jdbc.update("UPDATE metadata SET version=0");jdbc.update("UPDATE investment_control SET status='RUNNING',revision=0,updated_at=NULL WHERE id=1");true
     }.also { seedDemo() }
 }

@@ -37,11 +37,14 @@ abstract class InvestorRankingApiContractTest {
     @Autowired lateinit var investments: InvestmentService
     @Autowired lateinit var rankings: InvestorRankingService
     @Autowired lateinit var rates: RateLimits
+    @Autowired lateinit var ops: OpsWriter
     @MockitoSpyBean lateinit var jdbc: JdbcTemplate
     private val cookies = mutableMapOf<String,Cookie>()
     private val path = "/api/v1/admin/investor-rankings"
 
     @BeforeEach fun given() {
+        // Drain the activity writer first: its background inserts on the spied JdbcTemplate would race with stubbing.
+        ops.flush()
         db.reset()
         rates.clear()
         cookies.clear()
@@ -61,6 +64,7 @@ abstract class InvestorRankingApiContractTest {
             .contentType("application/json").content("{\"code\":\"$code\"}")).andReturn().response
         assertThat(session.status).isEqualTo(200)
         session.cookies.forEach { cookies[it.name] = it }
+        ops.flush()
     }
     private fun invest(id: String, team: Int, amount: Int) = investments.create(id,UUID.randomUUID().toString(),InvestmentInput(team,amount))
     private fun error(response: MockHttpServletResponse, status: Int, code: String) {

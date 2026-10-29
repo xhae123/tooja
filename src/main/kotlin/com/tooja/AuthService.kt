@@ -67,6 +67,7 @@ class AuthService(private val db: Database, private val secrets: Secrets, privat
         }
         cookie(response,"${role}_session",raw,172800)
         cookie(response,"${role}_csrf_context","",0,"/api/v1/$role")
+        request.setAttribute("principal",result)
         return result
     }
     fun logout(role: String,request: HttpServletRequest,response: HttpServletResponse) {

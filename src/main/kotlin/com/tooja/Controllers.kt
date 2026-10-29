@@ -55,7 +55,12 @@ class InvestorController(private val service: InvestmentService) {
     fun team(@PathVariable teamId: Int,req: HttpServletRequest): TeamDetail=service.teamDetail(principal(req),teamId)
     @PostMapping("/investments") @Operation(operationId="createInvestment",summary="[투자자] 투자 확정",description=OperationDescriptions.CREATE_INVESTMENT)
     @ApiResponses(ApiResponse(responseCode="201",description="투자 확정 또는 기존 성공 복구"),ApiResponse(responseCode="409",description="투자 중지 / 이미 투자한 팀 / 잔액 부족 / 다른 본문으로 요청 키 재사용"))
-    fun create(@RequestHeader("Idempotency-Key") key: String,@Valid @RequestBody body: InvestmentInput,req: HttpServletRequest): ResponseEntity<InvestmentReceipt> { Policy.validateAmount(body.amount);val r=service.create(principal(req),requestKey(key),body);return ResponseEntity.created(URI.create("/api/v1/investor/investments/${r.investment.investmentId}")).body(r) }
+    fun create(@RequestHeader("Idempotency-Key") key: String,@Valid @RequestBody body: InvestmentInput,req: HttpServletRequest): ResponseEntity<InvestmentReceipt> {
+        req.setAttribute(ActivityAttributes.TEAM_ID,body.teamId);req.setAttribute(ActivityAttributes.AMOUNT,body.amount)
+        Policy.validateAmount(body.amount);val r=service.create(principal(req),requestKey(key),body)
+        req.setAttribute(ActivityAttributes.INVESTMENT_ID,r.investment.investmentId)
+        return ResponseEntity.created(URI.create("/api/v1/investor/investments/${r.investment.investmentId}")).body(r)
+    }
     @GetMapping("/investment-requests/{requestKey}") @Operation(operationId="getInvestmentRequest",summary="[투자자] 응답이 끊긴 투자 결과 확인",description=OperationDescriptions.GET_REQUEST)
     fun result(@PathVariable requestKey: String,req: HttpServletRequest): RequestResult=service.result(principal(req),requestKey(requestKey))
     @GetMapping("/investments") @Operation(operationId="listMyInvestments",summary="[투자자] 내 거래 최신순 목록",description=OperationDescriptions.LIST_INVESTMENTS)
@@ -76,7 +81,10 @@ class AdminController(private val service: InvestmentService, private val rankin
         return rankings.rankings(selected)
     }
     @PatchMapping("/investment-status") @Operation(operationId="updateInvestmentStatus",summary="[관리자] 전체 투자 중지·재개",description=OperationDescriptions.UPDATE_INVESTMENT_STATUS)
-    fun investmentStatus(@Valid @RequestBody body: InvestmentStatusInput): InvestmentStatus=service.updateInvestmentStatus(body.status)
+    fun investmentStatus(@Valid @RequestBody body: InvestmentStatusInput,req: HttpServletRequest): InvestmentStatus {
+        req.setAttribute(ActivityAttributes.ACTION,if(body.status==InvestmentMode.PAUSED) "pause" else "resume")
+        return service.updateInvestmentStatus(body.status)
+    }
     @GetMapping("/overview") @Operation(operationId="getOverview",summary="[관리자] 전체·역할별 지급·소진 현황",description=OperationDescriptions.GET_OVERVIEW)
     fun overview(): Overview=service.overview()
     @GetMapping("/investors") @Operation(operationId="listInvestors",summary="[관리자] 투자자 검색·필터",description=OperationDescriptions.LIST_INVESTORS)

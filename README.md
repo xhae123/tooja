@@ -16,3 +16,4 @@ Kotlin · Spring Boot · MySQL(운영) · SQLite(로컬 데모). 투자자·관�
 HTML 리포트는 해당 실행 당시의 기록입니다. GitHub에서는 다운로드하여 브라우저로 열 수 있습니다.
 
 - [현재 운영 설정·보호 범위·남은 과제](docs/runtime-review.md)
+- [조물주 콘솔: 활동 기록·인프라 감시](docs/owner-console.md): 운영자 전용 `/owner` 화면, 활동 기록 항목, 수집기 ingest 계약

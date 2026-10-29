@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{owner/layout :: head('투자')}"></head>
+<body>
+<nav th:replace="~{owner/layout :: nav('investments')}"></nav>
+<main>
+    <header class="page-head"><h1>투자</h1><p class="muted">확정 투자는 불변 원장입니다. 거절된 요청은 요청 키 단위로 저장되며 시각은 활동 로그에서 확인합니다.</p></header>
+    <form class="filters" method="get" action="/owner/investments">
+        <label>팀 <input name="teamId" type="number" min="1" max="20" th:value="${f['teamId']}"></label>
+        <label>계정 <input name="accountId" th:value="${f['accountId']}"></label>
+        <label>결과 <select name="status"><option value="">전체</option><option value="SUCCEEDED" th:selected="${f['status']=='SUCCEEDED'}">확정</option><option value="REJECTED" th:selected="${f['status']=='REJECTED'}">거절</option></select></label>
+        <button type="submit">조회</button> <a class="quiet-link" href="/owner/investments">초기화</a>
+    </form>
+    <section class="card"><h2>팀별 모금</h2>
+        <table class="grid compact"><thead><tr><th>팀</th><th>이름</th><th>건수</th><th>금액</th></tr></thead><tbody>
+        <tr th:each="t : ${teams}"><td th:text="${t.id}"></td><td><a th:href="@{/owner/investments(teamId=${t.id})}" th:text="${t.name}"></a></td><td th:text="${t.n}"></td><td th:text="${fmt.won(t.amount)}"></td></tr></tbody></table></section>
+    <section class="card" th:unless="${f['status']=='REJECTED'}"><h2>확정 투자 <span class="muted" th:text="${#lists.size(succeeded)} + '건'"></span></h2>
+        <table class="grid"><thead><tr><th>확정 시각</th><th>계정</th><th>이름</th><th>종류</th><th>팀</th><th>금액</th><th>잔액 후</th><th>버전</th><th>ID</th></tr></thead><tbody>
+        <tr th:each="i : ${succeeded}"><td th:text="${fmt.isoTime(i.confirmed_at)}"></td><td class="mono"><a th:href="@{/owner/accounts/{id}(id=${i.account_id})}" th:text="${i.account_id}"></a></td><td th:text="${i.alias}"></td><td class="muted" th:text="${i.kind}"></td><td th:text="${i.team_id} + ' ' + ${i.name}"></td><td th:text="${fmt.won(i.amount)}"></td><td th:text="${fmt.won(i.balance_after)}"></td><td th:text="${i.version}"></td><td class="mono muted" th:text="${#strings.abbreviate(i.id, 13)}" th:title="${i.id}"></td></tr>
+        <tr th:if="${#lists.isEmpty(succeeded)}"><td colspan="9" class="muted">확정 투자가 없습니다.</td></tr></tbody></table></section>
+    <section class="card" th:unless="${f['status']=='SUCCEEDED'}"><h2>거절된 요청 <span class="muted" th:text="${#lists.size(rejected)} + '건'"></span></h2>
+        <table class="grid"><thead><tr><th>계정</th><th>이름</th><th>팀</th><th>금액</th><th>HTTP</th><th>오류</th><th>메시지</th><th>요청 키</th></tr></thead><tbody>
+        <tr th:each="r : ${rejected}" class="warn"><td class="mono"><a th:href="@{/owner/accounts/{id}(id=${r.account_id})}" th:text="${r.account_id}"></a></td><td th:text="${r.alias}"></td><td th:text="${r.team_id} + ' ' + ${r.name ?: ''}"></td><td th:text="${fmt.won(r.amount)}"></td><td th:text="${r.http_status}"></td><td class="mono" th:text="${r.error_code}"></td><td class="muted" th:text="${r.error_message}"></td><td class="mono muted" th:text="${#strings.abbreviate(r.request_key, 13)}" th:title="${r.request_key}"></td></tr>
+        <tr th:if="${#lists.isEmpty(rejected)}"><td colspan="8" class="muted">거절된 요청이 없습니다.</td></tr></tbody></table></section>
+</main>
+</body>
+</html>

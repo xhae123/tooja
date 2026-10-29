@@ -42,6 +42,32 @@ class EdgeSupportTest {
         val req=MockHttpServletRequest("GET","/.well-known/acme-challenge/public-token").apply {addHeader("X-Forwarded-Proto","http")}
         var passed=false;filter.doFilter(req,MockHttpServletResponse()) { _,_->passed=true };assertThat(passed).isTrue()
     }
+    @Test @DisplayName("Given API 요청이 끝나면 When 활동 기록기가 있으면 Then 경로·상태·행위·클라이언트 IP·UA가 한 줄 저장되고 본문은 저장되지 않는다")
+    fun recordsActivity(@org.junit.jupiter.api.io.TempDir directory: java.nio.file.Path) {
+        val source=org.springframework.jdbc.datasource.DriverManagerDataSource("jdbc:sqlite:${directory.resolve("edge.db")}").apply { setDriverClassName("org.sqlite.JDBC") }
+        val db=Database(org.springframework.jdbc.core.JdbcTemplate(source),org.springframework.jdbc.datasource.DataSourceTransactionManager(source),Secrets("edge-test-pepper-0123"),org.springframework.mock.env.MockEnvironment().also { it.setActiveProfiles("production") },"manual","","").also { it.initialize() }
+        val ops=OpsWriter(db,io.micrometer.core.instrument.simple.SimpleMeterRegistry(),10)
+        try {
+            val logging=EdgeRequestFilter(ObjectMapper(),false,"https://api.example.com",ops,java.time.Clock.systemUTC(),1)
+            val req=MockHttpServletRequest("POST","/api/v1/investor/session").apply { setContent("{\"code\":\"0037\"}".toByteArray());remoteAddr="10.0.0.2";addHeader("X-Forwarded-For","9.9.9.9, 203.0.113.5");addHeader("User-Agent","EdgeTest/1");setAttribute("requestId","req_edge") }
+            val res=MockHttpServletResponse()
+            logging.doFilter(req,res) { request,response-> request.setAttribute(org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE,"/api/v1/investor/session");(response as jakarta.servlet.http.HttpServletResponse).status=401 }
+            logging.doFilter(MockHttpServletRequest("GET","/owner/login"),MockHttpServletResponse()) { _,_-> }
+            ops.flush()
+            val rows=db.jdbc.queryForList("SELECT * FROM activity_log")
+            assertThat(rows).hasSize(1)
+            val row=rows.single()
+            assertThat(row["action"]).isEqualTo("login_failed");assertThat(row["route"]).isEqualTo("/api/v1/investor/session");assertThat(row["status"]).isEqualTo(401)
+            assertThat(row["client_ip"]).isEqualTo("203.0.113.5");assertThat(row["remote_addr"]).isEqualTo("10.0.0.2");assertThat(row["user_agent"]).isEqualTo("EdgeTest/1");assertThat(row["request_id"]).isEqualTo("req_edge")
+            assertThat(row.toString()).doesNotContain("0037")
+        } finally { ops.shutdown() }
+    }
+    @Test @DisplayName("Given 1MiB 초과 본문 When 수집기 ingest 경로에 전송 Then API와 같은 413")
+    fun internalBodyLimit() {
+        val req=MockHttpServletRequest("POST","/internal/ingest").apply { setContent(ByteArray(EdgeRequestFilter.MAX_BODY_BYTES+1)) }
+        val res=MockHttpServletResponse();var passed=false;filter.doFilter(req,res) { _,_->passed=true }
+        assertThat(res.status).isEqualTo(413);assertThat(passed).isFalse()
+    }
     @ParameterizedTest(name="Given 1MiB 초과 본문 When {0} API에 전송 Then 경로 표기와 관계없이 413")
     @ValueSource(strings=["/api/v1/admin/investment-status","/%61pi/v1/admin/investment-status","/api;review/v1/admin/investment-status","/api/%76%31/admin/investment-status"])
     fun pathBodyLimit(uri: String) {

@@ -13,18 +13,21 @@ import org.springframework.web.filter.OncePerRequestFilter
 import org.springframework.web.servlet.HandlerMapping
 import java.sql.SQLException
 
-/** Metrics are scraped from the host over the private Docker bridge, never through public nginx. */
+/** Metrics are scraped and samples ingested from the host over the private Docker bridge, never through the public LB. */
 @Component
 @org.springframework.core.annotation.Order(-90)
-class InternalMetricsFilter(@Value("\${app.metrics-host-address:172.19.0.1}") private val hostAddress: String = "172.19.0.1"): OncePerRequestFilter() {
+class InternalEndpointsFilter(@Value("\${app.metrics-host-address:172.19.0.1}") private val hostAddress: String = "172.19.0.1",
+    @Value("\${app.ingest-token:}") private val ingestToken: String = ""): OncePerRequestFilter() {
     override fun doFilterInternal(req: HttpServletRequest,res: HttpServletResponse,chain: FilterChain) {
-        if (RequestPaths.isPrivateActuator(req) &&
-            req.remoteAddr !in setOf("127.0.0.1","::1",hostAddress)) {
-            res.status = 404
-            return
-        }
+        val private = RequestPaths.isPrivateActuator(req); val internal = RequestPaths.isInternal(req)
+        // Tomcat reports the IPv6 loopback in its expanded form.
+        if ((private || internal) && req.remoteAddr !in setOf("127.0.0.1","::1","0:0:0:0:0:0:0:1",hostAddress)) { res.status = 404; return }
+        // The host bridge address alone also matches docker-proxy traffic, so ingest needs the shared token too.
+        if (internal && !tokenMatches(req.getHeader("X-Internal-Token"))) { res.status = 404; return }
         chain.doFilter(req,res)
     }
+    private fun tokenMatches(provided: String?): Boolean = ingestToken.isNotBlank() && provided != null &&
+        java.security.MessageDigest.isEqual(ingestToken.toByteArray(), provided.toByteArray())
 }
 
 @Component

@@ -28,33 +28,37 @@ class RequestIds: OncePerRequestFilter() {
 @Component
 class RateLimits(private val clock: Clock) {
     private val buckets=ConcurrentHashMap<String,ArrayDeque<Long>>()
-    fun check(key: String,limit: Int) {
+    /** record=false only checks the window (for pre-checks); the caller records the attempt afterwards. */
+    fun check(key: String,limit: Int,record: Boolean=true) {
         val now=clock.millis()
         if(buckets.size>2000) buckets.entries.removeIf { synchronized(it.value) { it.value.isEmpty() || it.value.last()<=now-60000 } }
         val q=buckets.computeIfAbsent(key){ArrayDeque()}
         synchronized(q) {
             while(q.isNotEmpty() && q.first()<=now-60000) q.removeFirst()
             if(q.size>=limit) throw ApiException(429,"RATE_LIMITED","요청이 많습니다. 잠시 후 다시 시도해 주세요.",retryAfter=(((q.first()+60000-now)+999)/1000).toInt().coerceAtLeast(1))
-            q.addLast(now)
+            if(record) q.addLast(now)
         }
     }
     fun clear()=buckets.clear()
 }
 @Configuration
-class WebConfig(private val security: ApiSecurityInterceptor,
+class WebConfig(private val security: ApiSecurityInterceptor,private val ownerPages: OwnerPageInterceptor,
     @org.springframework.beans.factory.annotation.Value("\${app.acme-root:}") private val acmeRoot: String): WebMvcConfigurer {
     override fun addResourceHandlers(registry: org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry) {
         if(acmeRoot.isNotBlank()) registry.addResourceHandler("/.well-known/acme-challenge/**")
             .addResourceLocations(java.nio.file.Path.of(acmeRoot,".well-known","acme-challenge").toUri().toString().trimEnd('/')+"/")
+        registry.addResourceHandler("/owner/assets/**").addResourceLocations("classpath:/owner-assets/").setCachePeriod(0)
     }
     override fun addInterceptors(registry: InterceptorRegistry) {
         registry.addInterceptor(security)
+        registry.addInterceptor(ownerPages).addPathPatterns("/owner","/owner/**")
     }
 }
 @RestControllerAdvice
-class Errors(private val telemetry: Telemetry) {
+class Errors(private val telemetry: Telemetry,private val systemEvents: SystemEvents? = null) {
     @ExceptionHandler(ApiException::class)
     fun api(e: ApiException,req: HttpServletRequest): ResponseEntity<ApiError> {
+        req.setAttribute(ActivityAttributes.ERROR_CODE,e.code)
         val builder=ResponseEntity.status(e.status); e.retryAfter?.let { builder.header("Retry-After",it.toString()) }
         return builder.body(ApiError(ErrorBody(e.code,e.message,e.details),req.getAttribute("requestId")?.toString()?:"unknown"))
     }
@@ -66,7 +70,7 @@ class Errors(private val telemetry: Telemetry) {
     fun type(e: Exception,req: HttpServletRequest): ResponseEntity<ApiError> = api(ApiException(422,"VALIDATION_FAILED","경로·헤더·필터 입력값을 확인해 주세요.",mapOf("fieldErrors" to listOf(mapOf("field" to "request","reason" to "INVALID_TYPE","message" to "필수 입력값과 타입을 확인하세요.")))),req)
     @ExceptionHandler(DataAccessException::class)
     fun database(e: DataAccessException,req: HttpServletRequest): ResponseEntity<ApiError> {
-        telemetry.error(e,req,503,"SERVICE_UNAVAILABLE")
+        telemetry.error(e,req,503,"SERVICE_UNAVAILABLE");systemEvents?.dbUnreachable(req.getAttribute("requestId")?.toString())
         return api(ApiException(503,"SERVICE_UNAVAILABLE","저장소에 연결할 수 없습니다. 결과를 다시 확인해 주세요.",retryAfter=5),req)
     }
     @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException::class)

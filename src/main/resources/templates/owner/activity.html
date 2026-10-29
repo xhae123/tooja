@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{owner/layout :: head('활동 로그')}"></head>
+<body>
+<nav th:replace="~{owner/layout :: nav('activity')}"></nav>
+<main>
+    <header class="page-head"><h1>활동 로그</h1><p class="muted">모든 API 요청이 한 줄씩 기록됩니다. 최신순, 한 번에 <span th:text="${limit}"></span>건.</p></header>
+    <form class="filters" method="get" action="/owner/activity">
+        <label>시작 <input type="datetime-local" name="from" th:value="${f['from']}"></label>
+        <label>끝 <input type="datetime-local" name="to" th:value="${f['to']}"></label>
+        <label>행위 <select name="action"><option value="">전체</option><option th:each="a : ${actions}" th:value="${a}" th:text="${a}" th:selected="${a == f['action']}"></option></select></label>
+        <label>역할 <select name="role"><option value="">전체</option><option th:each="r : ${ {'INVESTOR','ADMIN','OWNER'} }" th:value="${r}" th:text="${r}" th:selected="${r == f['role']}"></option></select></label>
+        <label>계정 <input name="accountId" th:value="${f['accountId']}" placeholder="participant_01_01"></label>
+        <label>상태 <input name="status" type="number" min="100" max="599" th:value="${f['status']}" placeholder="401"></label>
+        <label>경로 <input name="route" th:value="${f['route']}" placeholder="/api/v1/admin"></label>
+        <label>IP <input name="ip" th:value="${f['ip']}"></label>
+        <label>오류 코드 <input name="errorCode" th:value="${f['errorCode']}" placeholder="SESSION_EXPIRED"></label>
+        <label>개수 <input name="limit" type="number" min="1" max="200" th:value="${limit}"></label>
+        <button type="submit">조회</button> <a class="quiet-link" href="/owner/activity">초기화</a>
+    </form>
+    <table th:replace="~{owner/layout :: activityTable(${result.items})}"></table>
+    <div th:replace="~{owner/layout :: more(${result}, ${base})}"></div>
+</main>
+</body>
+</html>

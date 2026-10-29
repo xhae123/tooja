@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{owner/layout :: head(${account.alias})}"></head>
+<body>
+<nav th:replace="~{owner/layout :: nav('accounts')}"></nav>
+<main>
+    <header class="page-head"><h1><span th:text="${account.alias}"></span> <span class="mono muted" th:text="${account.id}"></span></h1>
+        <p class="muted"><span class="role" th:text="${account.role}"></span> <span th:text="${account.kind ?: ''}"></span> · 팀 <span th:text="${account.team_id != null ? account.team_id + ' ' + account.team_name : '없음'}"></span> · 잔액 <span th:text="${fmt.won(account.balance)}"></span> · 지급 <span th:text="${fmt.isoTime(account.granted_at)}"></span><span th:if="${account.deleted_at != null}" class="bad"> · 삭제됨</span></p>
+    </header>
+    <section class="cards">
+        <div class="card"><h2>투자 <span class="muted" th:text="${#lists.size(investments)} + '건'"></span></h2>
+            <table class="grid"><thead><tr><th>확정 시각</th><th>팀</th><th>금액</th><th>잔액 후</th><th>버전</th><th>ID</th></tr></thead><tbody>
+            <tr th:each="i : ${investments}"><td th:text="${fmt.isoTime(i.confirmed_at)}"></td><td th:text="${i.team_id} + ' ' + ${i.name}"></td><td th:text="${fmt.won(i.amount)}"></td><td th:text="${fmt.won(i.balance_after)}"></td><td th:text="${i.version}"></td><td class="mono muted" th:text="${i.id}"></td></tr>
+            <tr th:if="${#lists.isEmpty(investments)}"><td colspan="6" class="muted">투자가 없습니다.</td></tr></tbody></table></div>
+        <div class="card"><h2>투자 요청 <span class="muted" th:text="${#lists.size(requests)} + '건'"></span></h2>
+            <table class="grid"><thead><tr><th>결과</th><th>팀</th><th>금액</th><th>HTTP</th><th>오류</th><th>요청 키</th></tr></thead><tbody>
+            <tr th:each="r : ${requests}" th:classappend="${r.status == 'REJECTED'}?'warn'"><td th:text="${r.status}"></td><td th:text="${r.team_id}"></td><td th:text="${fmt.won(r.amount)}"></td><td th:text="${r.http_status ?: 201}"></td><td class="mono" th:text="${r.error_code ?: ''}"></td><td class="mono muted" th:text="${#strings.abbreviate(r.request_key, 13)}" th:title="${r.request_key}"></td></tr>
+            <tr th:if="${#lists.isEmpty(requests)}"><td colspan="6" class="muted">요청이 없습니다.</td></tr></tbody></table></div>
+        <div class="card"><h2>세션</h2>
+            <table class="grid"><thead><tr><th>토큰 해시</th><th>만료</th><th>종료</th></tr></thead><tbody>
+            <tr th:each="s : ${sessions}"><td class="mono" th:text="${#strings.substring(s.token_hash, 0, 8)} + '…'"></td><td th:text="${fmt.isoTime(s.expires_at)}"></td><td th:text="${s.revoked_at != null ? fmt.isoTime(s.revoked_at) : '활성'}"></td></tr>
+            <tr th:if="${#lists.isEmpty(sessions)}"><td colspan="3" class="muted">세션 기록이 없습니다.</td></tr></tbody></table></div>
+    </section>
+    <section class="card"><h2>최근 활동 50건 <a class="quiet-link" th:href="@{/owner/activity(accountId=${account.id})}">전체 →</a></h2>
+        <table th:replace="~{owner/layout :: activityTable(${activity})}"></table></section>
+</main>
+</body>
+</html>

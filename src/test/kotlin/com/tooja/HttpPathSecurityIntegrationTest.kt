@@ -28,6 +28,7 @@ class HttpPathSecurityIntegrationTest {
     @Autowired lateinit var service: InvestmentService
     @Autowired lateinit var rates: RateLimits
     @Autowired lateinit var mapper: ObjectMapper
+    @Autowired lateinit var ops: OpsWriter
     private val client=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()
 
     companion object {
@@ -38,15 +39,35 @@ class HttpPathSecurityIntegrationTest {
     }
 
     @BeforeEach fun given() {
-        db.reset();rates.clear()
+        ops.flush();db.reset();rates.clear()
         Allure.label("parentSuite","통합 테스트")
         Allure.label("suite","실제 HTTP + Tomcat + SQLite")
         Steps.step("Given 로컬 실제 Tomcat과 독립 DB, 인증 쿠키 없는 HTTP 클라이언트")
     }
-    private fun send(path: String,body: ByteArray?=null): HttpResponse<String> {
+    private fun send(path: String,body: ByteArray?=null,method: String="PATCH",headers: Map<String,String> = emptyMap()): HttpResponse<String> {
         val request=HttpRequest.newBuilder(URI.create("http://127.0.0.1:$port$path")).timeout(Duration.ofSeconds(10))
-        if(body==null) request.GET() else request.header("Content-Type","application/json").method("PATCH",HttpRequest.BodyPublishers.ofByteArray(body))
+        headers.forEach { (k,v) -> request.header(k,v) }
+        if(body==null) request.GET() else request.header("Content-Type","application/json").method(method,HttpRequest.BodyPublishers.ofByteArray(body))
         return client.send(request.build(),HttpResponse.BodyHandlers.ofString())
+    }
+
+    @Test @DisplayName("Given 실제 HTTP When 조물주 로그인 화면·보호 페이지 조회 Then 200+보호 헤더, 미로그인 개요는 302")
+    fun ownerPagesOverRealSocket() {
+        val login=send("/owner/login")
+        assertThat(login.statusCode()).isEqualTo(200)
+        assertThat(login.body()).contains("조물주","name=\"_csrf\"")
+        assertThat(login.headers().firstValue("X-Frame-Options").orElse("")).isEqualTo("DENY")
+        assertThat(login.headers().firstValue("Cache-Control").orElse("")).isEqualTo("no-store")
+        assertThat(HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:$port/owner")).build(),HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(302)
+        assertThat(send("/owner/assets/owner.css").statusCode()).isEqualTo(200)
+    }
+    @Test @DisplayName("Given 실제 소켓 loopback When ingest에 토큰 유무로 전송 Then 토큰 있으면 202, 없으면 404")
+    fun ingestOverRealSocket() {
+        val payload="{\"collector\":\"tooja-observer\",\"samples\":[{\"ts\":1,\"source\":\"host\",\"metric\":\"host.cpu.percent\",\"value\":1.0}]}".toByteArray()
+        assertThat(send("/internal/ingest",payload,"POST").statusCode()).isEqualTo(404)
+        val accepted=send("/internal/ingest",payload,"POST",mapOf("X-Internal-Token" to "test-ingest-token"))
+        assertThat(accepted.statusCode()).isEqualTo(202)
+        assertThat(mapper.readTree(accepted.body())["accepted"].asInt()).isEqualTo(1)
     }
 
     @ParameterizedTest(name="Given 실제 HTTP·미로그인 When {0} 조회·중지 Then 401·상태 유지")

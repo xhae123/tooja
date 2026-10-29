@@ -2,3 +2,4 @@ app:
   reports-enabled: true
   secure-cookies: false
   pepper: demo-only-change-before-production
+  owner-token: ${OWNER_TOKEN:demo-owner-token-change-before-production-0001}

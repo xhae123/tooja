@@ -45,14 +45,29 @@ class TelemetryTest {
         for(address in listOf("203.0.113.1","172.19.0.2")) {
             val req=MockHttpServletRequest("GET","/actuator/metrics/jvm.memory.used").apply { remoteAddr=address;addHeader("X-Forwarded-For","172.19.0.1") }
             val res=MockHttpServletResponse();var passed=false
-            InternalMetricsFilter().doFilter(req,res) { _,_->passed=true }
+            InternalEndpointsFilter().doFilter(req,res) { _,_->passed=true }
             assertThat(res.status).isEqualTo(404);assertThat(passed).isFalse()
         }
     }
     @Test @DisplayName("Given 인스턴스의 Docker gateway When 내부 metrics를 조회 Then 수집 요청을 허용한다")
     fun hostEndpoint() {
         val req=MockHttpServletRequest("GET","/actuator/metrics").apply { remoteAddr="172.19.0.1" }
-        var passed=false;InternalMetricsFilter().doFilter(req,MockHttpServletResponse()) { _,_->passed=true }
+        var passed=false;InternalEndpointsFilter().doFilter(req,MockHttpServletResponse()) { _,_->passed=true }
         assertThat(passed).isTrue()
+    }
+    @Test @DisplayName("Given 수집기 ingest When 주소만 맞고 토큰이 없거나 틀리면 Then 404, 둘 다 맞으면 통과")
+    fun ingestGate() {
+        val filter=InternalEndpointsFilter("172.19.0.1","shared-secret")
+        fun attempt(address: String,token: String?): Pair<Int,Boolean> {
+            val req=MockHttpServletRequest("POST","/internal/ingest").apply { remoteAddr=address;token?.let { addHeader("X-Internal-Token",it) } }
+            val res=MockHttpServletResponse();var passed=false;filter.doFilter(req,res) { _,_->passed=true };return res.status to passed
+        }
+        assertThat(attempt("172.19.0.1",null)).isEqualTo(404 to false)
+        assertThat(attempt("172.19.0.1","wrong")).isEqualTo(404 to false)
+        assertThat(attempt("203.0.113.1","shared-secret")).isEqualTo(404 to false)
+        assertThat(attempt("172.19.0.1","shared-secret").second).isTrue()
+        assertThat(attempt("127.0.0.1","shared-secret").second).isTrue()
+        assertThat(attempt("0:0:0:0:0:0:0:1","shared-secret").second).describedAs("Tomcat's expanded IPv6 loopback").isTrue()
+        assertThat(InternalEndpointsFilter("172.19.0.1","").let { f -> val res=MockHttpServletResponse();f.doFilter(MockHttpServletRequest("POST","/internal/ingest").apply { remoteAddr="127.0.0.1";addHeader("X-Internal-Token","") },res) { _,_-> };res.status }).isEqualTo(404)
     }
 }

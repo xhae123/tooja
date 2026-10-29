@@ -12,6 +12,9 @@ internal object RequestPaths {
     private val versionedApi = parser.parse("/api/v1/**")
     private val actuator = parser.parse("/actuator/**")
     private val health = parser.parse("/actuator/health")
+    private val internal = parser.parse("/internal/**")
+    private val owner = parser.parse("/owner/**")
+    private val ownerRoot = parser.parse("/owner")
 
     private fun path(request: HttpServletRequest): PathContainer {
         if (!ServletRequestPathUtils.hasParsedRequestPath(request)) ServletRequestPathUtils.parseAndCache(request)
@@ -20,6 +23,8 @@ internal object RequestPaths {
 
     fun isApi(request: HttpServletRequest) = api.matches(path(request))
     fun isVersionedApi(request: HttpServletRequest) = versionedApi.matches(path(request))
+    fun isInternal(request: HttpServletRequest) = internal.matches(path(request))
+    fun isOwner(request: HttpServletRequest): Boolean { val p = path(request); return owner.matches(p) || ownerRoot.matches(p) }
     fun isPrivateActuator(request: HttpServletRequest): Boolean {
         val path = path(request)
         return actuator.matches(path) && !health.matches(path)
