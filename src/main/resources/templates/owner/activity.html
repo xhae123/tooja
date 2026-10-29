@@ -2,24 +2,34 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{owner/layout :: head('활동 로그')}"></head>
 <body>
-<nav th:replace="~{owner/layout :: nav('activity')}"></nav>
+<div class="shell">
+<aside th:replace="~{owner/layout :: sidebar('activity')}"></aside>
+<div class="content">
+<header th:replace="~{owner/layout :: topbar('활동 로그', '모든 API 요청', null)}"></header>
 <main>
-    <header class="page-head"><h1>활동 로그</h1><p class="muted">모든 API 요청이 한 줄씩 기록됩니다. 최신순, 한 번에 <span th:text="${limit}"></span>건.</p></header>
-    <form class="filters" method="get" action="/owner/activity">
-        <label>시작 <input type="datetime-local" name="from" th:value="${f['from']}"></label>
-        <label>끝 <input type="datetime-local" name="to" th:value="${f['to']}"></label>
-        <label>행위 <select name="action"><option value="">전체</option><option th:each="a : ${actions}" th:value="${a}" th:text="${a}" th:selected="${a == f['action']}"></option></select></label>
-        <label>역할 <select name="role"><option value="">전체</option><option th:each="r : ${ {'INVESTOR','ADMIN','OWNER'} }" th:value="${r}" th:text="${r}" th:selected="${r == f['role']}"></option></select></label>
-        <label>계정 <input name="accountId" th:value="${f['accountId']}" placeholder="participant_01_01"></label>
-        <label>상태 <input name="status" type="number" min="100" max="599" th:value="${f['status']}" placeholder="401"></label>
-        <label>경로 <input name="route" th:value="${f['route']}" placeholder="/api/v1/admin"></label>
-        <label>IP <input name="ip" th:value="${f['ip']}"></label>
-        <label>오류 코드 <input name="errorCode" th:value="${f['errorCode']}" placeholder="SESSION_EXPIRED"></label>
-        <label>개수 <input name="limit" type="number" min="1" max="200" th:value="${limit}"></label>
-        <button type="submit">조회</button> <a class="quiet-link" href="/owner/activity">초기화</a>
+    <form class="filterbar" method="get" action="/owner/activity">
+        <label>시작 <input class="input" type="datetime-local" name="from" th:value="${f['from']}"></label>
+        <label>끝 <input class="input" type="datetime-local" name="to" th:value="${f['to']}"></label>
+        <label>행위 <select class="select" name="action"><option value="">전체</option><option th:each="a : ${actions}" th:value="${a}" th:text="${a}" th:selected="${a == f['action']}"></option></select></label>
+        <label>역할 <select class="select" name="role"><option value="">전체</option><option th:each="r : ${ {'INVESTOR','ADMIN','OWNER'} }" th:value="${r}" th:text="${r}" th:selected="${r == f['role']}"></option></select></label>
+        <label>계정 <input class="input" name="accountId" th:value="${f['accountId']}" placeholder="participant_01_01"></label>
+        <label>상태 <input class="input" name="status" type="number" min="100" max="599" th:value="${f['status']}" placeholder="401" style="min-width:90px"></label>
+        <label>경로 <input class="input" name="route" th:value="${f['route']}" placeholder="/api/v1/admin"></label>
+        <label>IP <input class="input" name="ip" th:value="${f['ip']}"></label>
+        <label>오류 코드 <input class="input" name="errorCode" th:value="${f['errorCode']}" placeholder="SESSION_EXPIRED"></label>
+        <label>개수 <input class="input" name="limit" type="number" min="1" max="200" th:value="${limit}" style="min-width:80px"></label>
+        <div class="actions"><button type="submit" class="btn primary">조회</button><a class="btn quiet" href="/owner/activity">초기화</a></div>
     </form>
-    <table th:replace="~{owner/layout :: activityTable(${result.items})}"></table>
-    <div th:replace="~{owner/layout :: more(${result}, ${base})}"></div>
+    <div class="chips" th:if="${!#maps.isEmpty(activeFilters)}">
+        <span class="chip" th:each="e : ${activeFilters}"><span class="k" th:text="${e.key}"></span> <span th:text="${e.value}"></span></span>
+    </div>
+    <section class="card flush">
+        <div class="table-wrap"><table th:replace="~{owner/layout :: activityTable(${result.items})}"></table></div>
+        <th:block th:if="${#lists.isEmpty(result.items)}"><div th:replace="~{owner/layout :: empty('기록이 없습니다', '조건을 넓히거나 초기화해 보세요. 단축키 / 로 필터에 바로 갑니다.')}"></div></th:block>
+        <div th:replace="~{owner/layout :: more(${result}, ${base})}"></div>
+    </section>
 </main>
+</div></div>
+<script src="/owner/assets/owner.js"></script>
 </body>
 </html>

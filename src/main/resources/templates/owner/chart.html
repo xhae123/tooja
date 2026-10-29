@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<figure th:fragment="chart(c, range, single)" class="chart" th:attr="data-points=${c.pointsJson},data-metric=${c.metric}">
+    <figcaption>
+        <span class="badge neutral" th:text="${c.source}"></span>
+        <a class="metric" th:href="@{/owner/infra(source=${c.source},metric=${c.metric},range=${range})}" th:text="${c.metric}"></a>
+        <span class="latest" th:text="${fmt.metric(c.metric, c.latest)}"></span>
+        <span class="range">범위 <span th:text="${fmt.metric(c.metric, c.minValue)} + ' ~ ' + ${fmt.metric(c.metric, c.maxValue)}"></span> · 버킷 <span th:text="${#lists.size(c.points)}"></span></span>
+    </figcaption>
+    <div class="plot">
+        <svg th:attr="viewBox='0 0 ' + ${c.width} + ' ' + ${c.height}" role="img" th:attrappend="aria-label=${c.metric}" preserveAspectRatio="none">
+            <line th:each="i : ${#numbers.sequence(0,4)}" class="gridline" th:attr="x1=${c.padLeft},x2=${c.width - 8},y1=${8 + (c.height-16) * i / 4},y2=${8 + (c.height-16) * i / 4}"></line>
+            <text th:each="l : ${c.yLabels}" class="ylab" x="2" th:attr="y=${l.y}" th:text="${l.text}"></text>
+            <path th:if="${!#strings.isEmpty(c.area)}" class="band" th:attr="d=${c.area}"></path>
+            <path th:if="${!#strings.isEmpty(c.path)}" class="line" th:attr="d=${c.path}"></path>
+            <circle th:each="m : ${c.markers}" class="marker" r="3" th:attr="cx=${m.x},cy=${m.y}"></circle>
+            <line class="cross" th:attr="y1=8,y2=${c.height - 8}"></line>
+            <circle class="focus"></circle>
+            <text th:if="${#lists.isEmpty(c.points)}" class="empty-text" th:attr="x=${c.width/2},y=${c.height/2}" text-anchor="middle">이 범위에 샘플이 없습니다</text>
+        </svg>
+        <div class="tip"></div>
+    </div>
+    <div class="axis"><span th:each="t : ${c.ticks}" th:text="${t.second}"></span></div>
+    <details th:if="${single}"><summary>표로 보기 (<span th:text="${#lists.size(c.points)}"></span>개 버킷)</summary>
+        <table class="table compact"><thead><tr><th>버킷 시작</th><th class="num">평균</th><th class="num">최소</th><th class="num">최대</th></tr></thead><tbody>
+        <tr th:each="p : ${c.points}"><td th:text="${fmt.timeFull(p.ts)}"></td><td class="num" th:text="${fmt.metric(c.metric, p.avg)}"></td><td class="num" th:text="${fmt.metric(c.metric, p.min)}"></td><td class="num" th:text="${fmt.metric(c.metric, p.max)}"></td></tr></tbody></table></details>
+</figure>
+</body>
+</html>

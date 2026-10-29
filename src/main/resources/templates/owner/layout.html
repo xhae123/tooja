@@ -5,42 +5,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title th:text="${title} + ' · 조물주'">조물주</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
     <link rel="stylesheet" href="/owner/assets/owner.css">
 </head>
 <body>
-<nav th:fragment="nav(page)" class="nav">
-    <a class="brand" href="/owner">조물주</a>
-    <a th:classappend="${page=='overview'}?'active'" href="/owner">개요</a>
-    <a th:classappend="${page=='activity'}?'active'" href="/owner/activity">활동 로그</a>
-    <a th:classappend="${page=='accounts'}?'active'" href="/owner/accounts">계정</a>
-    <a th:classappend="${page=='sessions'}?'active'" href="/owner/sessions">세션</a>
-    <a th:classappend="${page=='investments'}?'active'" href="/owner/investments">투자</a>
-    <a th:classappend="${page=='infra'}?'active'" href="/owner/infra">인프라</a>
-    <a th:classappend="${page=='events'}?'active'" href="/owner/events">이벤트</a>
-    <a th:classappend="${page=='errors'}?'active'" href="/owner/errors">오류</a>
-    <form class="logout" method="post" action="/owner/logout"><input type="hidden" name="_csrf" th:value="${csrf}"><button type="submit" class="quiet">로그아웃</button></form>
-</nav>
-<div th:fragment="more(result, base)" th:if="${result.nextCursor != null}" class="more">
-    <a th:href="${base} + 'cursor=' + ${result.nextCursor}">이전 기록 더 보기 →</a>
+
+<aside th:fragment="sidebar(page)" class="sidebar">
+    <div class="brand"><span class="mark">조</span><span><span class="name">조물주</span><span class="env">api.leafeep.com · 조회 전용</span></span></div>
+    <nav class="nav">
+        <div class="nav-group"><div class="label">감시</div>
+            <a th:classappend="${page=='overview'}?'active'" href="/owner"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>개요</a>
+            <a th:classappend="${page=='infra'}?'active'" href="/owner/infra"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 5-8 4 5"/></svg>인프라</a>
+            <a th:classappend="${page=='events'}?'active'" href="/owner/events"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>이벤트</a>
+            <a th:classappend="${page=='errors'}?'active'" href="/owner/errors"><svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>오류</a>
+        </div>
+        <div class="nav-group"><div class="label">데이터</div>
+            <a th:classappend="${page=='activity'}?'active'" href="/owner/activity"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/></svg>활동 로그</a>
+            <a th:classappend="${page=='accounts'}?'active'" href="/owner/accounts"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15 14.5a5 5 0 0 1 6.5 5.5"/></svg>계정</a>
+            <a th:classappend="${page=='sessions'}?'active'" href="/owner/sessions"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M3 10h18"/></svg>세션</a>
+            <a th:classappend="${page=='investments'}?'active'" href="/owner/investments"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>투자</a>
+        </div>
+    </nav>
+    <div class="foot">
+        <span>세션 만료 <time th:if="${ownerSession != null}" th:attr="data-ms=${ownerSession.expiresAt.toEpochMilli()}" th:text="${fmt.isoTime(ownerSession.expiresAt.toString())}"></time></span>
+        <form method="post" action="/owner/logout"><input type="hidden" name="_csrf" th:value="${csrf}"><button type="submit" class="btn quiet sm">로그아웃</button></form>
+    </div>
+</aside>
+
+<header th:fragment="topbar(title, crumb, refresh)" class="topbar">
+    <button id="menu" class="btn quiet sm menu-btn" type="button" aria-label="메뉴">☰</button>
+    <h1 th:text="${title}"></h1>
+    <span class="crumb" th:if="${crumb != null}" th:text="${crumb}"></span>
+    <div class="pills" th:if="${pulse != null}" th:with="hbAge=${pulse.heartbeat != null ? (pulse.now - pulse.heartbeat) / 1000 : null},hostAge=${pulse.host != null ? (pulse.now - pulse.host) / 1000 : null}">
+        <span class="pill" th:classappend="${hbAge == null or hbAge > 180}?'bad':'good'" th:title="'마지막 heartbeat ' + ${fmt.ago(pulse.heartbeat, pulse.now)}"><span class="dot"></span>앱 <strong th:text="${hbAge == null ? '기록 없음' : (hbAge > 180 ? '응답 없음' : '정상')}"></strong></span>
+        <span class="pill" th:classappend="${hostAge == null or hostAge > 180}?'warn':'good'" th:title="'마지막 호스트 샘플 ' + ${fmt.ago(pulse.host, pulse.now)}"><span class="dot"></span>수집기 <strong th:text="${hostAge == null ? '없음' : (hostAge > 180 ? '지연' : '정상')}"></strong></span>
+        <span class="pill" th:classappend="${pulse.control == 'RUNNING'}?'good':'warn'"><span class="dot"></span>투자 접수 <strong th:text="${pulse.control == 'RUNNING' ? '진행' : '중지'}"></strong></span>
+        <span class="pill" th:classappend="${pulse.errors5m > 0}?'bad':''"><span class="dot"></span>5xx/5분 <strong th:text="${pulse.errors5m}"></strong></span>
+        <label class="refresh" th:if="${refresh != null}"><input id="autorefresh" type="checkbox" checked th:attr="data-seconds=${refresh}"> 자동 갱신 <span id="autorefresh-count"></span></label>
+    </div>
+</header>
+
+<div th:fragment="empty(title, hint)" class="empty">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <b th:text="${title}"></b><span th:text="${hint}"></span>
 </div>
-<table th:fragment="activityTable(rows)" class="grid activity">
-    <thead><tr><th>시각(KST)</th><th>행위</th><th>행위자</th><th>메서드</th><th>경로</th><th>상태</th><th>오류</th><th>대상</th><th>ms</th><th>IP</th><th>Origin</th><th>UA</th><th>requestId</th></tr></thead>
+
+<div th:fragment="more(result, base)" class="table-foot">
+    <span th:text="${#lists.size(result.items)} + '건 표시'"></span>
+    <a th:if="${result.nextCursor != null}" class="btn sm" th:href="${base} + 'cursor=' + ${result.nextCursor}">이전 기록 더 보기 →</a>
+</div>
+
+<table th:fragment="activityTable(rows)" class="table">
+    <thead><tr><th>시각</th><th>행위</th><th>행위자</th><th>요청</th><th class="num">상태</th><th>오류</th><th>대상</th><th class="num">ms</th><th>클라이언트</th></tr></thead>
     <tbody>
-    <tr th:each="r : ${rows}" th:classappend="${r.status >= 500}?'bad':(${r.status >= 400}?'warn':'')">
-        <td th:text="${fmt.time(r.ts)}" th:title="${fmt.iso(r.ts)}"></td>
-        <td><a th:href="@{/owner/activity(action=${r.action})}" th:text="${r.action}"></a></td>
-        <td><span class="role" th:text="${r.actor_role ?: '-'}"></span> <a th:if="${r.account_id != null and r.actor_role != 'OWNER'}" th:href="@{/owner/accounts/{id}(id=${r.account_id})}" th:text="${r.account_id}"></a><span th:if="${r.actor_role == 'OWNER'}">owner</span></td>
-        <td th:text="${r.method}"></td><td class="mono" th:text="${r.route}"></td>
-        <td th:text="${r.status}"></td><td class="mono" th:text="${r.error_code ?: ''}"></td>
-        <td class="mono"><span th:if="${r.team_id != null}" th:text="'팀' + ${r.team_id}"></span> <span th:if="${r.amount != null}" th:text="${fmt.won(r.amount)}"></span> <span th:if="${r.investment_id != null}" th:text="${#strings.abbreviate(r.investment_id, 11)}" th:title="${r.investment_id}"></span></td>
-        <td th:text="${r.duration_ms}"></td>
-        <td class="mono"><a th:href="@{/owner/activity(ip=${r.client_ip})}" th:text="${r.client_ip}"></a><span th:if="${r.client_ip != r.remote_addr}" class="muted" th:text="' via ' + ${r.remote_addr}"></span></td>
-        <td class="mono muted" th:text="${r.origin ?: ''}"></td>
-        <td class="ua" th:text="${r.user_agent ?: ''}" th:title="${r.user_agent}"></td>
-        <td class="mono muted" th:text="${#strings.abbreviate(r.request_id, 13)}" th:title="${r.request_id}"></td>
+    <tr th:each="r : ${rows}" th:classappend="${r.status >= 500}?'bad':''">
+        <td th:title="${r.request_id}"><time th:attr="data-ms=${r.ts}" th:text="${fmt.time(r.ts)}"></time><span class="sub"><time data-rel th:attr="data-ms=${r.ts}"></time> · <span class="mono" th:text="${#strings.abbreviate(r.request_id, 12)}"></span></span></td>
+        <td><a th:href="@{/owner/activity(action=${r.action})}" class="badge mono" th:classappend="${#strings.startsWith(r.action,'login_failed') or r.action == 'invest_rejected'} ? 'warn' : (${#strings.startsWith(r.action,'login') or r.action == 'logout'} ? 'info' : (${r.action == 'invest_succeeded' or r.action == 'pause' or r.action == 'resume'} ? 'accent' : 'neutral'))" th:text="${r.action}"></a></td>
+        <td><span th:if="${r.actor_role != null}" class="badge neutral" th:text="${r.actor_role}"></span> <a th:if="${r.account_id != null and r.actor_role != 'OWNER'}" class="mono" th:href="@{/owner/accounts/{id}(id=${r.account_id})}" th:text="${r.account_id}"></a><span th:if="${r.actor_role == null}" class="muted">—</span></td>
+        <td class="mono"><span class="dim" th:text="${r.method}"></span> <span th:text="${r.route}"></span></td>
+        <td class="num mono" th:classappend="'status-' + ${r.status / 100} + 'xx'" th:text="${r.status}"></td>
+        <td class="mono"><span th:if="${r.error_code != null}" class="badge bad mono" th:text="${r.error_code}"></span></td>
+        <td class="mono"><span th:if="${r.team_id != null}" class="badge neutral" th:text="'팀 ' + ${r.team_id}"></span> <span th:if="${r.amount != null}" th:text="${fmt.won(r.amount)}"></span> <span th:if="${r.investment_id != null}" class="muted" th:text="${#strings.abbreviate(r.investment_id, 11)}" th:title="${r.investment_id}"></span></td>
+        <td class="num mono" th:text="${r.duration_ms}"></td>
+        <td><a class="mono" th:href="@{/owner/activity(ip=${r.client_ip})}" th:text="${r.client_ip}"></a><span class="sub trunc" th:text="${r.user_agent ?: ''}" th:title="${r.user_agent}"></span></td>
     </tr>
-    <tr th:if="${#lists.isEmpty(rows)}"><td colspan="13" class="muted">기록이 없습니다.</td></tr>
     </tbody>
 </table>
+<script src="/owner/assets/owner.js"></script>
 </body>
 </html>

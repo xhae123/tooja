@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{owner/layout :: head('오류')}"></head>
-<body>
-<main class="login">
-    <h1>처리할 수 없습니다</h1>
-    <p class="error" th:text="${message}"></p>
-    <p><a href="/owner">개요로 돌아가기</a></p>
-</main>
+<body class="login-page">
+<div class="login-card">
+    <div class="brand"><span class="mark">조</span><span><span class="name">처리할 수 없습니다</span><span class="env">조물주 콘솔</span></span></div>
+    <div class="alert bad" th:text="${message}"></div>
+    <p style="margin:14px 0 0"><a class="btn" href="/owner">개요로 돌아가기</a></p>
+</div>
 </body>
 </html>

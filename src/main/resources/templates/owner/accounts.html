@@ -2,37 +2,43 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{owner/layout :: head('계정')}"></head>
 <body>
-<nav th:replace="~{owner/layout :: nav('accounts')}"></nav>
+<div class="shell">
+<aside th:replace="~{owner/layout :: sidebar('accounts')}"></aside>
+<div class="content">
+<header th:replace="~{owner/layout :: topbar('계정', ${#lists.size(rows)} + '명', null)}"></header>
 <main>
-    <header class="page-head"><h1>계정 <span class="muted" th:text="${#lists.size(rows)} + '명'"></span></h1><p class="muted">로그인 코드는 해시로만 저장되어 있어 어디에도 표시되지 않습니다.</p></header>
-    <form class="filters" method="get" action="/owner/accounts">
-        <label>검색 <input name="q" th:value="${f['q']}" placeholder="이름 또는 ID"></label>
-        <label>역할 <select name="role"><option value="">전체</option><option value="INVESTOR" th:selected="${f['role']=='INVESTOR'}">INVESTOR</option><option value="ADMIN" th:selected="${f['role']=='ADMIN'}">ADMIN</option></select></label>
-        <label>종류 <select name="kind"><option value="">전체</option><option value="PARTICIPANT" th:selected="${f['kind']=='PARTICIPANT'}">PARTICIPANT</option><option value="STAFF" th:selected="${f['kind']=='STAFF'}">STAFF</option></select></label>
-        <label>팀 <input name="teamId" type="number" min="1" max="20" th:value="${f['teamId']}"></label>
-        <label>소진 <select name="spendingStatus"><option value="">전체</option><option value="UNSPENT" th:selected="${f['spendingStatus']=='UNSPENT'}">UNSPENT</option><option value="COMPLETED" th:selected="${f['spendingStatus']=='COMPLETED'}">COMPLETED</option></select></label>
-        <button type="submit">조회</button> <a class="quiet-link" href="/owner/accounts">초기화</a>
+    <form class="filterbar" method="get" action="/owner/accounts">
+        <label>검색 <input class="input" name="q" th:value="${f['q']}" placeholder="이름 또는 ID"></label>
+        <label>역할 <select class="select" name="role"><option value="">전체</option><option value="INVESTOR" th:selected="${f['role']=='INVESTOR'}">INVESTOR</option><option value="ADMIN" th:selected="${f['role']=='ADMIN'}">ADMIN</option></select></label>
+        <label>종류 <select class="select" name="kind"><option value="">전체</option><option value="PARTICIPANT" th:selected="${f['kind']=='PARTICIPANT'}">PARTICIPANT</option><option value="STAFF" th:selected="${f['kind']=='STAFF'}">STAFF</option></select></label>
+        <label>팀 <input class="input" name="teamId" type="number" min="1" max="20" th:value="${f['teamId']}" style="min-width:80px"></label>
+        <label>소진 <select class="select" name="spendingStatus"><option value="">전체</option><option value="UNSPENT" th:selected="${f['spendingStatus']=='UNSPENT'}">UNSPENT</option><option value="COMPLETED" th:selected="${f['spendingStatus']=='COMPLETED'}">COMPLETED</option></select></label>
+        <div class="actions"><button type="submit" class="btn primary">조회</button><a class="btn quiet" href="/owner/accounts">초기화</a></div>
     </form>
-    <table class="grid">
-        <thead><tr><th>ID</th><th>이름</th><th>역할</th><th>팀</th><th>잔액</th><th>투자</th><th>거절</th><th>지급 시각</th><th>마지막 로그인</th><th>마지막 활동</th><th>요청 수</th><th>활성 세션</th></tr></thead>
-        <tbody>
-        <tr th:each="a : ${rows}" th:classappend="${a.deleted_at != null}?'muted'">
-            <td class="mono"><a th:href="@{/owner/accounts/{id}(id=${a.id})}" th:text="${a.id}"></a></td>
-            <td th:text="${a.alias}"></td>
-            <td><span class="role" th:text="${a.role}"></span> <span class="muted" th:text="${a.kind ?: ''}"></span></td>
-            <td th:text="${a.team_id != null ? a.team_id + ' ' + a.team_name : '-'}"></td>
-            <td th:text="${a.role == 'INVESTOR' ? fmt.won(a.balance) : '-'}"></td>
-            <td th:text="${a.invest_count} + '건 ' + ${fmt.won(a.invested)}"></td>
-            <td th:text="${a.rejected}"></td>
-            <td class="muted" th:text="${fmt.isoTime(a.granted_at)}"></td>
-            <td th:text="${fmt.time(a.last_login)}" th:title="${fmt.ago(a.last_login, now)}"></td>
-            <td th:text="${fmt.time(a.last_seen)}" th:title="${fmt.ago(a.last_seen, now)}"></td>
-            <td th:text="${a.requests}"></td>
-            <td th:classappend="${a.active_sessions > 0}?'good'" th:text="${a.active_sessions}"></td>
-        </tr>
-        <tr th:if="${#lists.isEmpty(rows)}"><td colspan="12" class="muted">조건에 맞는 계정이 없습니다.</td></tr>
-        </tbody>
-    </table>
+    <p class="muted" style="margin:-6px 0 12px;font-size:12.5px">로그인 코드는 해시로만 저장되어 어디에도 표시되지 않습니다. 잔액 막대는 100만원 지급 기준 남은 비율입니다.</p>
+    <section class="card flush">
+        <div class="table-wrap"><table class="table">
+            <thead><tr><th>계정</th><th>역할</th><th>팀</th><th>잔액</th><th class="num">투자</th><th class="num">거절</th><th>마지막 로그인</th><th>마지막 활동</th><th class="num">요청</th><th class="num">활성 세션</th></tr></thead>
+            <tbody>
+            <tr th:each="a : ${rows}">
+                <td><a class="row-link" th:href="@{/owner/accounts/{id}(id=${a.id})}" th:text="${a.alias}"></a><span class="sub mono" th:text="${a.id}"></span><span th:if="${a.deleted_at != null}" class="badge bad" style="margin-left:6px">삭제됨</span></td>
+                <td><span class="badge" th:classappend="${a.role == 'ADMIN'} ? 'info' : 'neutral'" th:text="${a.role}"></span> <span class="muted" th:text="${a.kind ?: ''}"></span></td>
+                <td th:text="${a.team_id != null ? a.team_id + ' · ' + a.team_name : '—'}"></td>
+                <td th:if="${a.role == 'INVESTOR'}"><div style="display:flex;align-items:center;gap:8px"><span class="bar" th:classappend="${a.balance == 0}?'good'" style="width:90px"><i th:style="'width:' + ${a.balance / 10000} + '%'"></i></span><span class="mono" th:text="${fmt.won(a.balance)}"></span></div></td>
+                <td th:unless="${a.role == 'INVESTOR'}" class="muted">—</td>
+                <td class="num"><span th:text="${a.invest_count}"></span><span class="sub" th:text="${fmt.won(a.invested)}"></span></td>
+                <td class="num" th:classappend="${a.rejected > 0}?'warn'" th:text="${a.rejected}"></td>
+                <td><time th:if="${a.last_login != null}" data-rel th:attr="data-ms=${a.last_login}" th:text="${fmt.time(a.last_login)}"></time><span th:if="${a.last_login == null}" class="muted">—</span></td>
+                <td><time th:if="${a.last_seen != null}" data-rel th:attr="data-ms=${a.last_seen}" th:text="${fmt.time(a.last_seen)}"></time><span th:if="${a.last_seen == null}" class="muted">—</span></td>
+                <td class="num" th:text="${a.requests}"></td>
+                <td class="num"><span th:if="${a.active_sessions > 0}" class="badge good"><span class="dot"></span><span th:text="${a.active_sessions}"></span></span><span th:if="${a.active_sessions == 0}" class="muted">0</span></td>
+            </tr>
+            </tbody>
+        </table></div>
+        <th:block th:if="${#lists.isEmpty(rows)}"><div th:replace="~{owner/layout :: empty('조건에 맞는 계정이 없습니다', '검색어나 필터를 바꿔 보세요.')}"></div></th:block>
+    </section>
 </main>
+</div></div>
+<script src="/owner/assets/owner.js"></script>
 </body>
 </html>

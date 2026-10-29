@@ -26,6 +26,16 @@ object OwnerFormat {
         name.contains("heap") || name.contains("bytes") -> bytes(value)
         else -> num(value)
     }
+    /** Axis labels: compact numbers (1.2k, 45%, 1.3 GB). */
+    fun metricShort(name: String, value: Double): String = when {
+        name.endsWith("percent") || name.endsWith("availability") -> "%.0f%%".format(value)
+        name.contains("heap") || name.contains("bytes") -> bytes(value)
+        value >= 1_000_000 -> "%.1fM".format(value / 1e6)
+        value >= 10_000 -> "%.0fk".format(value / 1e3)
+        value >= 1_000 -> "%.1fk".format(value / 1e3)
+        value % 1.0 == 0.0 -> "%.0f".format(value)
+        else -> "%.1f".format(value)
+    }
     fun ago(ms: Long?, now: Long): String { ms ?: return "-"; val s = (now - ms) / 1000; return when { s < 60 -> "${s}초 전"; s < 3600 -> "${s / 60}분 전"; s < 86400 -> "${s / 3600}시간 전"; else -> "${s / 86400}일 전" } }
     fun duration(seconds: Long?): String { seconds ?: return "-"; return when { seconds < 60 -> "${seconds}초"; seconds < 3600 -> "${seconds / 60}분 ${seconds % 60}초"; else -> "${seconds / 3600}시간 ${(seconds % 3600) / 60}분" } }
 }
@@ -33,10 +43,11 @@ object OwnerFormat {
 data class Page<T>(val items: List<T>, val nextCursor: Long?)
 data class ChartPoint(val ts: Long, val avg: Double, val min: Double, val max: Double)
 data class Marker(val x: String, val y: String)
-data class Chart(val source: String, val metric: String, val points: List<ChartPoint>, val path: String, val area: String, val markers: List<Marker>, val minValue: Double, val maxValue: Double, val latest: Double?, val width: Int, val height: Int, val ticks: List<Pair<Int, String>>)
+data class YLabel(val y: String, val text: String)
+data class Chart(val source: String, val metric: String, val points: List<ChartPoint>, val path: String, val area: String, val markers: List<Marker>, val minValue: Double, val maxValue: Double, val latest: Double?, val width: Int, val height: Int, val ticks: List<Pair<Int, String>>, val yLabels: List<YLabel>, val pointsJson: String, val padLeft: Int)
 
 @Service
-class OwnerQueries(private val db: Database, private val clock: Clock, private val ops: OpsWriter, private val events: SystemEvents) {
+class OwnerQueries(private val db: Database, private val clock: Clock, private val ops: OpsWriter, private val events: SystemEvents, private val mapper: com.fasterxml.jackson.databind.ObjectMapper) {
     private val errorCodes = listOf("SERVICE_UNAVAILABLE", "INTERNAL_ERROR")
 
     fun overview(): Map<String, Any?> = db.snapshot {
@@ -60,6 +71,14 @@ class OwnerQueries(private val db: Database, private val clock: Clock, private v
         m["queue"] = mapOf("size" to ops.queueSize(), "dropped" to ops.dropped(), "failures" to ops.writeFailures())
         m["now"] = now; m["mysql"] = db.mysql
         m
+    }
+    /** Global status pills for the top bar: cheap, three small queries. */
+    fun pulse(): Map<String, Any?> = db.read {
+        val now = clock.millis()
+        mapOf("now" to now, "heartbeat" to db.jdbc.queryForList("SELECT MAX(ts) FROM infra_samples WHERE metric='app.heartbeat'", Long::class.javaObjectType).firstOrNull(),
+            "host" to db.jdbc.queryForList("SELECT MAX(ts) FROM infra_samples WHERE source='host'", Long::class.javaObjectType).firstOrNull(),
+            "control" to db.jdbc.queryForObject("SELECT status FROM investment_control WHERE id=1", String::class.java),
+            "errors5m" to db.jdbc.queryForObject("SELECT COUNT(*) FROM activity_log WHERE ts>=? AND status>=500", Int::class.java, now - 300_000))
     }
     private fun active(row: Map<String, Any?>, nowIso: String) = row["revoked_at"] == null && row["expires_at"].toString() > nowIso
     private fun window(from: Long, to: Long): Map<String, Any?> {
@@ -151,21 +170,24 @@ class OwnerQueries(private val db: Database, private val clock: Clock, private v
 
     fun metrics(): List<Map<String, Any?>> = latest()
     /** Server-side bucket aggregate drawn as one SVG path; `ts - ts % step` works on both engines without FLOOR. */
-    fun chart(source: String, metric: String, rangeSeconds: Long, width: Int = 640, height: Int = 160): Chart = db.read {
+    /** `labels=false` draws a bare sparkline for stat cards. */
+    fun chart(source: String, metric: String, rangeSeconds: Long, width: Int = 640, height: Int = 160, labels: Boolean = true): Chart = db.read {
         val step = when { rangeSeconds <= 3600 -> 60L; rangeSeconds <= 6 * 3600 -> 300L; rangeSeconds <= 86400 -> 900L; else -> 3600L } * 1000
         val now = clock.millis(); val from = now - rangeSeconds * 1000
         val rows = db.jdbc.queryForList("SELECT (ts - (ts % ?)) AS bucket,AVG(sample_value) AS avg_value,MIN(sample_value) AS min_value,MAX(sample_value) AS max_value FROM infra_samples WHERE source=? AND metric=? AND ts>=? GROUP BY (ts - (ts % ?)) ORDER BY bucket", step, source, metric, from, step)
         val points = rows.map { ChartPoint((it["bucket"] as Number).toLong(), (it["avg_value"] as Number).toDouble(), (it["min_value"] as Number).toDouble(), (it["max_value"] as Number).toDouble()) }
         val lo = minOf(0.0, points.minOfOrNull { it.min } ?: 0.0); val hi = (points.maxOfOrNull { it.max } ?: 1.0).let { if (it <= lo) lo + 1.0 else it }
-        val pad = 8.0; val plotW = width - 2 * pad; val plotH = height - 2 * pad
-        fun x(ts: Long) = pad + plotW * (ts - from).toDouble() / (now - from)
+        val pad = if (labels) 8.0 else 2.0; val padLeft = if (labels) 36.0 else 2.0; val plotW = width - padLeft - pad; val plotH = height - 2 * pad
+        fun x(ts: Long) = padLeft + plotW * (ts - from).toDouble() / (now - from)
         fun y(v: Double) = pad + plotH * (1 - (v - lo) / (hi - lo))
         val path = points.mapIndexed { i, p -> "${if (i == 0) "M" else "L"}${"%.1f".format(x(p.ts))} ${"%.1f".format(y(p.avg))}" }.joinToString(" ")
         val area = if (points.isEmpty()) "" else path + " L${"%.1f".format(x(points.last().ts))} ${"%.1f".format(y(lo))} L${"%.1f".format(x(points.first().ts))} ${"%.1f".format(y(lo))} Z"
         val ticks = (0..4).map { i -> val ts = from + (now - from) * i / 4; (x(ts)).toInt() to OwnerFormat.time(ts).substring(if (rangeSeconds > 86400) 0 else 6).removeSuffix(":00") }
+        val yLabels = if (labels) listOf(hi, lo + (hi - lo) / 2, lo).map { YLabel("%.1f".format(y(it) + 3.5), OwnerFormat.metricShort(metric, it)) } else emptyList()
+        val pointsJson = mapper.writeValueAsString(points.map { mapOf("x" to "%.1f".format(x(it.ts)).toDouble(), "y" to "%.1f".format(y(it.avg)).toDouble(), "ts" to it.ts, "avg" to it.avg, "min" to it.min, "max" to it.max) })
         // Sparse series (a fresh deployment, a short range) would otherwise draw an invisible one-point path.
         val markers = if (points.size <= 40) points.map { Marker("%.1f".format(x(it.ts)), "%.1f".format(y(it.avg))) } else emptyList()
-        Chart(source, metric, points, path, area, markers, lo, hi, points.lastOrNull()?.avg, width, height, ticks)
+        Chart(source, metric, points, path, area, markers, lo, hi, points.lastOrNull()?.avg, width, height, ticks, yLabels, pointsJson, padLeft.toInt())
     }
 
     /** Filters arrive from a datetime-local input (Seoul) or as ISO instants. */

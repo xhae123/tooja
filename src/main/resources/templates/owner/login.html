@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{owner/layout :: head('로그인')}"></head>
-<body class="login-body">
-<main class="login">
-    <h1>조물주</h1>
-    <p class="muted">조회 전용 운영자 콘솔입니다. 운영 환경의 OWNER_TOKEN을 입력하세요.</p>
-    <p th:if="${error}" class="error" th:text="${error}"></p>
+<body class="login-page">
+<div class="login-card">
+    <div class="brand"><span class="mark">조</span><span><span class="name">조물주</span><span class="env">api.leafeep.com · 조회 전용 콘솔</span></span></div>
+    <p class="dim" style="margin:0">운영 환경의 <code>OWNER_TOKEN</code>으로 들어갑니다. 세션은 12시간이며 모든 로그인 시도는 기록됩니다.</p>
+    <div th:if="${error}" class="alert bad" style="margin-top:14px" th:text="${error}"></div>
     <form method="post" action="/owner/login">
         <input type="hidden" name="_csrf" th:value="${csrf}">
-        <label for="token">토큰</label>
-        <input id="token" name="token" type="password" autocomplete="off" required minlength="32" autofocus>
-        <button type="submit">들어가기</button>
+        <label class="muted" for="token" style="font-size:12px">토큰</label>
+        <input id="token" class="input" name="token" type="password" autocomplete="off" required minlength="32" autofocus placeholder="••••••••••••••••••••••••••••••••">
+        <button type="submit" class="btn primary" style="justify-content:center;padding:9px">들어가기</button>
     </form>
-</main>
+</div>
 </body>
 </html>
