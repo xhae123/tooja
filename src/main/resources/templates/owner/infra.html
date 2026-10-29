@@ -2,36 +2,31 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{owner/layout :: head('인프라')}"></head>
 <body>
-<meta http-equiv="refresh" content="60">
-<nav th:replace="~{owner/layout :: nav('infra')}"></nav>
+<div class="shell">
+<aside th:replace="~{owner/layout :: sidebar('infra')}"></aside>
+<div class="content">
+<header th:replace="~{owner/layout :: topbar('인프라', ${single} ? ${charts[0].source} + ' · ' + ${charts[0].metric} : '주요 지표', 60)}"></header>
 <main>
-    <header class="page-head"><h1>인프라</h1><p class="muted">앱(app)은 1분마다 스스로 재고, 호스트(host)와 OCI(oci) 값은 서버의 수집기가 넘겨줍니다. 버킷 평균을 선으로, 최소~최대를 띠로 그립니다. 60초마다 새로 고침.</p></header>
-    <div class="filters">
+    <div class="filterbar" style="align-items:center">
         <span class="seg"><a th:each="r : ${ {'1h','6h','24h','7d'} }" th:classappend="${r == range}?'active'" th:href="@{/owner/infra(range=${r},source=${single ? charts[0].source : null},metric=${single ? charts[0].metric : null})}" th:text="${r}"></a></span>
-        <span class="muted" th:text="${single} ? '지표 하나를 크게 봅니다. 아래 목록에서 다른 지표를 고르세요.' : '주요 지표입니다. 아래 목록에서 지표를 누르면 크게 봅니다.'"></span>
-        <a class="quiet-link" th:if="${single}" th:href="@{/owner/infra(range=${range})}">주요 지표로</a>
+        <span class="muted" style="font-size:12.5px">앱은 1분마다 스스로 재고, host·oci 값은 서버 수집기가 넘겨줍니다. 선은 버킷 평균, 띠는 최소~최대. 차트 위에 마우스를 올리면 값이 보입니다.</span>
+        <a class="btn quiet sm" th:if="${single}" th:href="@{/owner/infra(range=${range})}" style="margin-left:auto">← 주요 지표</a>
     </div>
     <section th:classappend="${single}?'charts single':'charts'">
-        <figure class="chart" th:each="c : ${charts}">
-            <figcaption><span class="role" th:text="${c.source}"></span> <a class="mono" th:href="@{/owner/infra(source=${c.source},metric=${c.metric},range=${range})}" th:text="${c.metric}"></a>
-                <span class="muted">최근 <span th:text="${fmt.metric(c.metric, c.latest)}"></span> · 범위 <span th:text="${fmt.metric(c.metric, c.minValue)} + ' ~ ' + ${fmt.metric(c.metric, c.maxValue)}"></span> · 버킷 <span th:text="${#lists.size(c.points)}"></span></span></figcaption>
-            <svg th:attr="viewBox='0 0 ' + ${c.width} + ' ' + ${c.height}" role="img" th:attrappend="aria-label=${c.metric}" preserveAspectRatio="none">
-                <line th:each="i : ${#numbers.sequence(0,4)}" class="gridline" x1="8" th:attr="y1=${8 + (c.height-16) * i / 4},y2=${8 + (c.height-16) * i / 4}" th:x2="${c.width - 8}"></line>
-                <path th:if="${!#strings.isEmpty(c.area)}" class="band" th:attr="d=${c.area}"></path>
-                <path th:if="${!#strings.isEmpty(c.path)}" class="line" th:attr="d=${c.path}"></path>
-                <circle th:each="m : ${c.markers}" class="marker" r="3.5" th:attr="cx=${m.x},cy=${m.y}"></circle>
-                <text th:if="${#lists.isEmpty(c.points)}" class="empty" th:attr="x=${c.width/2},y=${c.height/2}" text-anchor="middle">이 범위에 샘플이 없습니다</text>
-            </svg>
-            <div class="axis"><span th:each="t : ${c.ticks}" th:text="${t.second}"></span></div>
-            <details th:if="${single}"><summary>표로 보기 (<span th:text="${#lists.size(c.points)}"></span>개 버킷)</summary>
-                <table class="grid compact"><thead><tr><th>버킷 시작</th><th>평균</th><th>최소</th><th>최대</th></tr></thead><tbody>
-                <tr th:each="p : ${c.points}"><td th:text="${fmt.timeFull(p.ts)}"></td><td th:text="${fmt.num(p.avg)}"></td><td th:text="${fmt.num(p.min)}"></td><td th:text="${fmt.num(p.max)}"></td></tr></tbody></table></details>
-        </figure>
-        <p th:if="${#lists.isEmpty(charts)}" class="muted">표시할 지표가 없습니다. 앱 샘플은 기동 1분 후, 호스트·OCI 지표는 수집기 연결 후 나타납니다.</p>
+        <th:block th:each="c : ${charts}"><figure th:replace="~{owner/chart :: chart(${c}, ${range}, ${single})}"></figure></th:block>
+        <div th:if="${#lists.isEmpty(charts)}" class="card" style="grid-column:1/-1"><div th:replace="~{owner/layout :: empty('표시할 지표가 없습니다', '앱 샘플은 기동 1분 후, 호스트·OCI 지표는 수집기 연결 후 나타납니다.')}"></div></div>
     </section>
-    <section class="card"><h2>지표 목록</h2>
-        <table class="grid compact"><thead><tr><th>출처</th><th>지표</th><th>최근 값</th><th>시각</th></tr></thead><tbody>
-        <tr th:each="m : ${available}"><td><span class="role" th:text="${m.source}"></span></td><td class="mono"><a th:href="@{/owner/infra(source=${m.source},metric=${m.metric},range=${range})}" th:text="${m.metric}"></a></td><td th:text="${fmt.metric(m.metric, m.sample_value)}"></td><td class="muted" th:text="${fmt.timeFull(m.ts)}"></td></tr></tbody></table></section>
+    <section class="card"><header><h2>지표 목록 <span class="sub">출처별 · 마지막 값</span></h2></header><div class="body">
+        <div th:each="g : ${availableBySource}" th:with="src=${g.key},rows=${g.value}" style="margin-bottom:12px">
+            <h3 style="margin-bottom:6px"><span class="badge neutral" th:text="${src}"></span> <span class="muted" th:text="${#lists.size(rows)} + '개'"></span></h3>
+            <div class="metric-chips">
+                <a th:each="m : ${rows}" th:href="@{/owner/infra(source=${m.source},metric=${m.metric},range=${range})}" th:classappend="${single and charts[0].source == m.source and charts[0].metric == m.metric}?'active'" th:title="${fmt.timeFull(m.ts)}"><span th:text="${m.metric}"></span> <b th:text="${fmt.metric(m.metric, m.sample_value)}"></b></a>
+                <span th:if="${#lists.isEmpty(rows)}" class="muted" style="font-size:12.5px">아직 없음</span>
+            </div>
+        </div>
+    </div></section>
 </main>
+</div></div>
+<script src="/owner/assets/owner.js"></script>
 </body>
 </html>

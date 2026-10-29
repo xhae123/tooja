@@ -2,17 +2,25 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{owner/layout :: head('오류')}"></head>
 <body>
-<nav th:replace="~{owner/layout :: nav('errors')}"></nav>
+<div class="shell">
+<aside th:replace="~{owner/layout :: sidebar('errors')}"></aside>
+<div class="content">
+<header th:replace="~{owner/layout :: topbar('서버 오류', '5xx · SERVICE_UNAVAILABLE · INTERNAL_ERROR', null)}"></header>
 <main>
-    <header class="page-head"><h1>서버 오류</h1><p class="muted">5xx 응답과 SERVICE_UNAVAILABLE·INTERNAL_ERROR 요청입니다. requestId로 OCI 로그의 server_error 항목과 맞춰 볼 수 있습니다.</p></header>
-    <form class="filters" method="get" action="/owner/errors">
-        <label>시작 <input type="datetime-local" name="from" th:value="${f['from']}"></label>
-        <label>끝 <input type="datetime-local" name="to" th:value="${f['to']}"></label>
-        <label>코드 <input name="code" th:value="${f['code']}" placeholder="SERVICE_UNAVAILABLE"></label>
-        <button type="submit">조회</button> <a class="quiet-link" href="/owner/errors">초기화</a>
+    <form class="filterbar" method="get" action="/owner/errors">
+        <label>시작 <input class="input" type="datetime-local" name="from" th:value="${f['from']}"></label>
+        <label>끝 <input class="input" type="datetime-local" name="to" th:value="${f['to']}"></label>
+        <label>코드 <input class="input" name="code" th:value="${f['code']}" placeholder="SERVICE_UNAVAILABLE"></label>
+        <div class="actions"><button type="submit" class="btn primary">조회</button><a class="btn quiet" href="/owner/errors">초기화</a></div>
     </form>
-    <table th:replace="~{owner/layout :: activityTable(${result.items})}"></table>
-    <div th:replace="~{owner/layout :: more(${result}, ${base})}"></div>
+    <p class="muted" style="margin:-6px 0 12px;font-size:12.5px">requestId로 OCI 로그의 <code>server_error</code> 항목과 맞춰 볼 수 있습니다. 503은 DB 연결 실패, 500은 처리 중 예외입니다.</p>
+    <section class="card flush">
+        <div class="table-wrap"><table th:replace="~{owner/layout :: activityTable(${result.items})}"></table></div>
+        <th:block th:if="${#lists.isEmpty(result.items)}"><div th:replace="~{owner/layout :: empty('서버 오류가 없습니다', '좋은 소식입니다. 기간을 넓혀도 없으면 정말 없는 것입니다.')}"></div></th:block>
+        <div th:replace="~{owner/layout :: more(${result}, ${base})}"></div>
+    </section>
 </main>
+</div></div>
+<script src="/owner/assets/owner.js"></script>
 </body>
 </html>

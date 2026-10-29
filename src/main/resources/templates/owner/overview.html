@@ -2,104 +2,110 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{owner/layout :: head('개요')}"></head>
 <body>
-<meta http-equiv="refresh" content="30">
-<nav th:replace="~{owner/layout :: nav('overview')}"></nav>
+<div class="shell">
+<aside th:replace="~{owner/layout :: sidebar('overview')}"></aside>
+<div class="content">
+<header th:replace="~{owner/layout :: topbar('개요', null, 30)}"></header>
 <main>
-    <header class="page-head">
-        <h1>개요</h1>
-        <p class="muted">기준 <span th:text="${fmt.timeFull(o.now)}"></span> KST · 30초마다 새로 고침 · 배포 <span class="mono" th:text="${o.commit != null ? #strings.abbreviate(o.commit, 10) : '알 수 없음'}"></span> · DB <span th:text="${o.mysql ? 'MySQL' : 'SQLite'}"></span></p>
-    </header>
+    <div class="page-intro">
+        <p>기준 <time th:attr="data-ms=${o.now}" th:text="${fmt.timeFull(o.now)}"></time> KST · 배포 <code th:text="${o.commit != null ? #strings.abbreviate(o.commit, 10) : '알 수 없음'}"></code> · <span th:text="${o.mysql ? 'MySQL' : 'SQLite'}"></span> · 기동 <time data-rel th:attr="data-ms=${o.startedAt}" th:text="${fmt.ago(o.startedAt, o.now)}"></time></p>
+    </div>
 
-    <section class="tiles">
-        <div class="tile" th:with="hb=${o.heartbeat}" th:classappend="${hb == null or o.now - hb > 180000}?'bad':'good'">
-            <div class="label">앱 heartbeat</div>
-            <div class="value" th:text="${fmt.ago(hb, o.now)}"></div>
-            <div class="sub">기동 <span th:text="${fmt.timeFull(o.startedAt)}"></span> · 가동 <span th:text="${fmt.duration((o.now - o.startedAt) / 1000)}"></span></div>
+    <section class="stats">
+        <div class="stat" th:classappend="${o.last5m.errors > 0}?'bad':'good'">
+            <div class="label">분당 요청 <span class="muted">· 최근 5분</span></div>
+            <div class="value" th:text="${fmt.num(o.last5m.ratePerMin)}"></div>
+            <div class="sub"><span th:text="${o.last5m.requests}"></span>건 · 활동 계정 <span th:text="${o.last5m.actors}"></span></div>
+            <svg class="spark" th:if="${sparks['http.rate_per_min'] != null}" th:attr="viewBox='0 0 110 34'" preserveAspectRatio="none"><path class="band" th:attr="d=${sparks['http.rate_per_min'].area}"></path><path class="line" th:attr="d=${sparks['http.rate_per_min'].path}"></path></svg>
         </div>
-        <div class="tile" th:classappend="${o.hostSample == null or o.now - o.hostSample > 180000}?'warn':'good'">
-            <div class="label">호스트 수집기</div>
-            <div class="value" th:text="${fmt.ago(o.hostSample, o.now)}"></div>
-            <div class="sub">OCI 지표 <span th:text="${fmt.ago(o.ociSample, o.now)}"></span></div>
+        <div class="stat" th:classappend="${o.last5m.p95 != null and o.last5m.p95 > 500}?'warn':'good'">
+            <div class="label">p95 응답 <span class="muted">· 최근 5분</span></div>
+            <div class="value"><span th:text="${o.last5m.p95 ?: '–'}"></span><small>ms</small></div>
+            <div class="sub">1시간 p95 <span th:text="${o.last1h.p95 ?: '–'}"></span> ms</div>
+            <svg class="spark" th:if="${sparks['http.p95_ms'] != null}" viewBox="0 0 110 34" preserveAspectRatio="none"><path class="band" th:attr="d=${sparks['http.p95_ms'].area}"></path><path class="line" th:attr="d=${sparks['http.p95_ms'].path}"></path></svg>
         </div>
-        <div class="tile" th:classappend="${o.control.status == 'RUNNING'}?'good':'warn'">
-            <div class="label">투자 접수</div>
-            <div class="value" th:text="${o.control.status}"></div>
-            <div class="sub">revision <span th:text="${o.control.revision}"></span> · <span th:text="${fmt.isoTime(o.control.updated_at)}"></span></div>
+        <div class="stat" th:classappend="${o.last1h.errors > 0}?'bad':'good'">
+            <div class="label">서버 오류 <span class="muted">· 5분 / 1시간</span></div>
+            <div class="value"><span th:text="${o.last5m.errors}"></span><small>/ <span th:text="${o.last1h.errors}"></span></small></div>
+            <div class="sub">4xx <span th:text="${o.last5m.clientErrors}"></span> / <span th:text="${o.last1h.clientErrors}"></span></div>
+            <svg class="spark" th:if="${sparks['http.errors.count'] != null}" viewBox="0 0 110 34" preserveAspectRatio="none"><path class="band" th:attr="d=${sparks['http.errors.count'].area}"></path><path class="line" th:attr="d=${sparks['http.errors.count'].path}"></path></svg>
         </div>
-        <div class="tile" th:classappend="${o.downtime != null}?'warn':''">
-            <div class="label">마지막 다운타임</div>
-            <div class="value" th:text="${o.downtime != null ? fmt.time(o.downtime.ts) : '없음'}"></div>
-            <div class="sub mono" th:text="${o.downtime != null ? o.downtime.detail : '기록된 heartbeat 공백 없음'}"></div>
+        <div class="stat" th:with="cpu=${sparks['host.cpu.percent']}" th:classappend="${cpu != null and cpu.latest != null and cpu.latest > 60}?'warn':'info'">
+            <div class="label">호스트 CPU</div>
+            <div class="value" th:text="${cpu != null and cpu.latest != null ? fmt.pct(cpu.latest) : '–'}"></div>
+            <div class="sub">메모리 <span th:text="${sparks['host.mem.used_percent'] != null and sparks['host.mem.used_percent'].latest != null ? fmt.pct(sparks['host.mem.used_percent'].latest) : '–'}"></span> · 수집기 <time data-rel th:attr="data-ms=${o.hostSample}" th:text="${fmt.ago(o.hostSample, o.now)}"></time></div>
+            <svg class="spark" th:if="${cpu != null}" viewBox="0 0 110 34" preserveAspectRatio="none"><path class="band" th:attr="d=${cpu.area}"></path><path class="line" th:attr="d=${cpu.path}"></path></svg>
         </div>
     </section>
 
-    <section class="cards">
-        <div class="card">
-            <h2>최근 요청</h2>
-            <table class="kv">
-                <tr><th></th><th>5분</th><th>1시간</th></tr>
-                <tr><td>요청 수</td><td th:text="${fmt.num(o.last5m.requests)}"></td><td th:text="${fmt.num(o.last1h.requests)}"></td></tr>
-                <tr><td>분당 요청</td><td th:text="${fmt.num(o.last5m.ratePerMin)}"></td><td th:text="${fmt.num(o.last1h.ratePerMin)}"></td></tr>
-                <tr><td>5xx</td><td th:classappend="${o.last5m.errors > 0}?'bad'" th:text="${o.last5m.errors}"></td><td th:classappend="${o.last1h.errors > 0}?'bad'" th:text="${o.last1h.errors}"></td></tr>
-                <tr><td>4xx</td><td th:text="${o.last5m.clientErrors}"></td><td th:text="${o.last1h.clientErrors}"></td></tr>
-                <tr><td>p95 (ms)</td><td th:text="${o.last5m.p95 ?: '-'}"></td><td th:text="${o.last1h.p95 ?: '-'}"></td></tr>
-                <tr><td>활동 계정</td><td th:text="${o.last5m.actors}"></td><td th:text="${o.last1h.actors}"></td></tr>
-            </table>
+    <section class="stats">
+        <div class="stat" th:with="hb=${o.heartbeat}" th:classappend="${hb == null or o.now - hb > 180000}?'bad':'good'">
+            <div class="label">앱 heartbeat</div>
+            <div class="value" th:text="${fmt.ago(hb, o.now)}"></div>
+            <div class="sub">가동 <span th:text="${fmt.duration((o.now - o.startedAt) / 1000)}"></span></div>
         </div>
-        <div class="card">
-            <h2>세션·계정</h2>
+        <div class="stat" th:classappend="${o.control.status == 'RUNNING'}?'good':'warn'">
+            <div class="label">투자 접수</div>
+            <div class="value" th:text="${o.control.status == 'RUNNING' ? '진행 중' : '중지'}"></div>
+            <div class="sub">revision <span th:text="${o.control.revision}"></span> · <span th:text="${fmt.isoTime(o.control.updated_at)}"></span></div>
+        </div>
+        <div class="stat" th:classappend="${o.downtime != null}?'warn':'good'">
+            <div class="label">마지막 다운타임</div>
+            <div class="value" th:text="${o.downtime != null ? fmt.time(o.downtime.ts) : '없음'}"></div>
+            <div class="sub mono" th:text="${o.downtime != null ? o.downtime.detail : 'heartbeat 공백 없음'}"></div>
+        </div>
+        <div class="stat" th:classappend="${o.queue.dropped > 0 or o.queue.failures > 0}?'bad':''">
+            <div class="label">기록 파이프라인</div>
+            <div class="value"><span th:text="${o.queue.size}"></span><small>대기</small></div>
+            <div class="sub">버림 <span th:text="${o.queue.dropped}"></span> · 쓰기 실패 <span th:text="${o.queue.failures}"></span> · OCI 지표 <time data-rel th:attr="data-ms=${o.ociSample}" th:text="${fmt.ago(o.ociSample, o.now)}"></time></div>
+        </div>
+    </section>
+
+    <section class="grid-3">
+        <div class="card"><header><h2>세션 · 계정</h2><a class="btn quiet sm" href="/owner/sessions">세션 →</a></header><div class="body">
             <table class="kv">
                 <tr><td>활성 투자자 세션</td><td th:text="${o.sessions['INVESTOR'] ?: 0}"></td></tr>
                 <tr><td>활성 관리자 세션</td><td th:text="${o.sessions['ADMIN'] ?: 0}"></td></tr>
                 <tr><td>활성 조물주 세션</td><td th:text="${o.ownerSessions}"></td></tr>
-                <tr th:each="a : ${o.accounts}"><td th:text="${a.role} + (${a.kind != null} ? ' / ' + ${a.kind} : '')"></td><td><span th:text="${a.n}"></span>명 · 잔액 <span th:text="${fmt.won(a.balance)}"></span></td></tr>
+                <tr th:each="a : ${o.accounts}"><td><span class="badge neutral" th:text="${a.role}"></span> <span class="muted" th:text="${a.kind ?: ''}"></span></td><td><span th:text="${a.n}"></span>명 <span class="muted">· 잔액 <span th:text="${fmt.won(a.balance)}"></span></span></td></tr>
                 <tr><td>팀</td><td th:text="${o.teams}"></td></tr>
-            </table>
-        </div>
-        <div class="card">
-            <h2>투자</h2>
+            </table></div></div>
+        <div class="card"><header><h2>투자</h2><a class="btn quiet sm" href="/owner/investments">원장 →</a></header><div class="body">
             <table class="kv">
                 <tr><td>확정 건수</td><td th:text="${fmt.num(o.investments.n)}"></td></tr>
                 <tr><td>확정 금액</td><td th:text="${fmt.won(o.investments.amount)}"></td></tr>
                 <tr><td>투자한 계정</td><td th:text="${o.investments.investors}"></td></tr>
-                <tr><td>거절된 요청</td><td th:text="${o.rejected}"></td></tr>
-            </table>
-        </div>
-        <div class="card">
-            <h2>기록 파이프라인</h2>
-            <table class="kv">
-                <tr><td>대기 큐</td><td th:text="${o.queue.size}"></td></tr>
-                <tr><td>버린 기록</td><td th:classappend="${o.queue.dropped > 0}?'bad'" th:text="${o.queue.dropped}"></td></tr>
-                <tr><td>쓰기 실패 배치</td><td th:classappend="${o.queue.failures > 0}?'bad'" th:text="${o.queue.failures}"></td></tr>
-            </table>
-        </div>
+                <tr><td>거절된 요청</td><td th:classappend="${o.rejected > 0}?'warn'" th:text="${o.rejected}"></td></tr>
+                <tr><td>1시간 요청 / 오류</td><td><span th:text="${o.last1h.requests}"></span> / <span th:classappend="${o.last1h.errors > 0}?'bad'" th:text="${o.last1h.errors}"></span></td></tr>
+            </table></div></div>
+        <div class="card"><header><h2>최근 시스템 이벤트</h2><a class="btn quiet sm" href="/owner/events">전체 →</a></header><div class="body">
+            <ul class="timeline" th:if="${!#lists.isEmpty(o.recentEvents)}">
+                <li th:each="e : ${o.recentEvents}" th:classappend="${e.type == 'downtime_detected' or e.type == 'db_unreachable' or e.type == 'external_unavailable'} ? 'bad' : (${e.type == 'collector_offline' or e.type == 'app_stopping'} ? 'warn' : (${e.type == 'app_started' or e.type == 'collector_online'} ? 'good' : 'info'))">
+                    <div class="when"><time data-rel th:attr="data-ms=${e.ts}" th:text="${fmt.time(e.ts)}"></time> · <span th:text="${fmt.timeFull(e.ts)}"></span></div>
+                    <div class="what" th:text="${e.type}"></div>
+                    <div class="detail" th:if="${e.detail != null}" th:text="${e.detail}"></div>
+                </li>
+            </ul>
+            <th:block th:if="${#lists.isEmpty(o.recentEvents)}"><div th:replace="~{owner/layout :: empty('이벤트 없음', '기동·종료·다운타임이 생기면 여기에 쌓입니다.')}"></div></th:block>
+        </div></div>
     </section>
 
-    <section class="card">
-        <h2>최신 지표 <a class="quiet-link" href="/owner/infra">차트 →</a></h2>
-        <table class="grid">
-            <thead><tr><th>출처</th><th>지표</th><th>값</th><th>시각</th></tr></thead>
-            <tbody>
-            <tr th:each="s : ${o.latest}">
-                <td><span class="role" th:text="${s.source}"></span></td>
-                <td class="mono"><a th:href="@{/owner/infra(source=${s.source},metric=${s.metric})}" th:text="${s.metric}"></a></td>
-                <td th:text="${fmt.metric(s.metric, s.sample_value)}"></td>
-                <td class="muted" th:text="${fmt.ago(s.ts, o.now)}" th:title="${fmt.iso(s.ts)}"></td>
-            </tr>
-            <tr th:if="${#lists.isEmpty(o.latest)}"><td colspan="4" class="muted">아직 지표가 없습니다. 첫 샘플은 기동 1분 후에 생깁니다.</td></tr>
-            </tbody>
-        </table>
-    </section>
-
-    <section class="card">
-        <h2>최근 시스템 이벤트 <a class="quiet-link" href="/owner/events">전체 →</a></h2>
-        <table class="grid">
-            <tbody>
-            <tr th:each="e : ${o.recentEvents}"><td th:text="${fmt.time(e.ts)}"></td><td><span class="role" th:text="${e.type}"></span></td><td class="mono muted" th:text="${e.detail}"></td></tr>
-            <tr th:if="${#lists.isEmpty(o.recentEvents)}"><td class="muted">이벤트가 없습니다.</td></tr>
-            </tbody>
-        </table>
+    <section class="card flush">
+        <header><h2>최신 지표 <span class="sub">출처별 마지막 값</span></h2><a class="btn quiet sm" href="/owner/infra">차트 →</a></header>
+        <div class="body" style="padding:12px 16px">
+            <div class="grid-3" style="margin:0">
+                <div th:each="g : ${latestBySource}" th:with="src=${g.key},rows=${g.value}">
+                    <h3 style="margin-bottom:6px"><span class="badge neutral" th:text="${src}"></span> <span class="muted" th:text="${#lists.size(rows)} + '개'"></span></h3>
+                    <table class="kv" th:if="${!#lists.isEmpty(rows)}">
+                        <tr th:each="s : ${rows}"><td><a class="mono" th:href="@{/owner/infra(source=${s.source},metric=${s.metric})}" th:text="${s.metric}"></a></td><td><span th:text="${fmt.metric(s.metric, s.sample_value)}"></span> <time class="muted" data-rel th:attr="data-ms=${s.ts}" style="font-weight:400;font-size:11.5px"></time></td></tr>
+                    </table>
+                    <p class="muted" th:if="${#lists.isEmpty(rows)}" style="font-size:12.5px">아직 없음</p>
+                </div>
+            </div>
+        </div>
     </section>
 </main>
+</div></div>
+<script src="/owner/assets/owner.js"></script>
 </body>
 </html>

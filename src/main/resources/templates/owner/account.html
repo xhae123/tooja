@@ -2,27 +2,45 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{owner/layout :: head(${account.alias})}"></head>
 <body>
-<nav th:replace="~{owner/layout :: nav('accounts')}"></nav>
+<div class="shell">
+<aside th:replace="~{owner/layout :: sidebar('accounts')}"></aside>
+<div class="content">
+<header th:replace="~{owner/layout :: topbar(${account.alias}, ${account.id}, null)}"></header>
 <main>
-    <header class="page-head"><h1><span th:text="${account.alias}"></span> <span class="mono muted" th:text="${account.id}"></span></h1>
-        <p class="muted"><span class="role" th:text="${account.role}"></span> <span th:text="${account.kind ?: ''}"></span> · 팀 <span th:text="${account.team_id != null ? account.team_id + ' ' + account.team_name : '없음'}"></span> · 잔액 <span th:text="${fmt.won(account.balance)}"></span> · 지급 <span th:text="${fmt.isoTime(account.granted_at)}"></span><span th:if="${account.deleted_at != null}" class="bad"> · 삭제됨</span></p>
-    </header>
-    <section class="cards">
-        <div class="card"><h2>투자 <span class="muted" th:text="${#lists.size(investments)} + '건'"></span></h2>
-            <table class="grid"><thead><tr><th>확정 시각</th><th>팀</th><th>금액</th><th>잔액 후</th><th>버전</th><th>ID</th></tr></thead><tbody>
-            <tr th:each="i : ${investments}"><td th:text="${fmt.isoTime(i.confirmed_at)}"></td><td th:text="${i.team_id} + ' ' + ${i.name}"></td><td th:text="${fmt.won(i.amount)}"></td><td th:text="${fmt.won(i.balance_after)}"></td><td th:text="${i.version}"></td><td class="mono muted" th:text="${i.id}"></td></tr>
-            <tr th:if="${#lists.isEmpty(investments)}"><td colspan="6" class="muted">투자가 없습니다.</td></tr></tbody></table></div>
-        <div class="card"><h2>투자 요청 <span class="muted" th:text="${#lists.size(requests)} + '건'"></span></h2>
-            <table class="grid"><thead><tr><th>결과</th><th>팀</th><th>금액</th><th>HTTP</th><th>오류</th><th>요청 키</th></tr></thead><tbody>
-            <tr th:each="r : ${requests}" th:classappend="${r.status == 'REJECTED'}?'warn'"><td th:text="${r.status}"></td><td th:text="${r.team_id}"></td><td th:text="${fmt.won(r.amount)}"></td><td th:text="${r.http_status ?: 201}"></td><td class="mono" th:text="${r.error_code ?: ''}"></td><td class="mono muted" th:text="${#strings.abbreviate(r.request_key, 13)}" th:title="${r.request_key}"></td></tr>
-            <tr th:if="${#lists.isEmpty(requests)}"><td colspan="6" class="muted">요청이 없습니다.</td></tr></tbody></table></div>
-        <div class="card"><h2>세션</h2>
-            <table class="grid"><thead><tr><th>토큰 해시</th><th>만료</th><th>종료</th></tr></thead><tbody>
-            <tr th:each="s : ${sessions}"><td class="mono" th:text="${#strings.substring(s.token_hash, 0, 8)} + '…'"></td><td th:text="${fmt.isoTime(s.expires_at)}"></td><td th:text="${s.revoked_at != null ? fmt.isoTime(s.revoked_at) : '활성'}"></td></tr>
-            <tr th:if="${#lists.isEmpty(sessions)}"><td colspan="3" class="muted">세션 기록이 없습니다.</td></tr></tbody></table></div>
+    <section class="card" style="margin-bottom:14px"><div class="body" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+        <span class="avatar" th:text="${#strings.substring(account.alias,0,1)}"></span>
+        <div style="flex:1;min-width:200px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong style="font-size:16px" th:text="${account.alias}"></strong><span class="badge" th:classappend="${account.role == 'ADMIN'} ? 'info' : 'neutral'" th:text="${account.role}"></span><span th:if="${account.kind != null}" class="badge neutral" th:text="${account.kind}"></span><span th:if="${account.deleted_at != null}" class="badge bad">삭제됨</span></div>
+            <div class="muted" style="font-size:12.5px"><code th:text="${account.id}"></code> · 팀 <span th:text="${account.team_id != null ? account.team_id + ' ' + account.team_name : '없음'}"></span> · 지급 <span th:text="${fmt.isoTime(account.granted_at)}"></span></div>
+        </div>
+        <div style="display:flex;gap:24px">
+            <div><div class="muted" style="font-size:11.5px">잔액</div><div style="font-size:18px;font-weight:650" th:text="${account.role == 'INVESTOR' ? fmt.won(account.balance) : '—'}"></div></div>
+            <div><div class="muted" style="font-size:11.5px">투자</div><div style="font-size:18px;font-weight:650" th:text="${#lists.size(investments)} + '건'"></div></div>
+            <div><div class="muted" style="font-size:11.5px">거절 요청</div><div style="font-size:18px;font-weight:650" th:text="${rejectedCount}"></div></div>
+            <div><div class="muted" style="font-size:11.5px">세션</div><div style="font-size:18px;font-weight:650" th:text="${activeSessionCount}"></div></div>
+        </div>
+        <a class="btn" th:href="@{/owner/activity(accountId=${account.id})}">전체 활동 →</a>
+    </div></section>
+
+    <section class="grid-2">
+        <div class="card flush"><header><h2>투자 <span class="sub" th:text="${#lists.size(investments)} + '건'"></span></h2></header>
+            <div class="table-wrap"><table class="table compact"><thead><tr><th>확정 시각</th><th>팀</th><th class="num">금액</th><th class="num">잔액 후</th><th class="num">버전</th><th>ID</th></tr></thead><tbody>
+            <tr th:each="i : ${investments}"><td th:text="${fmt.isoTime(i.confirmed_at)}"></td><td th:text="${i.team_id} + ' · ' + ${i.name}"></td><td class="num" th:text="${fmt.won(i.amount)}"></td><td class="num" th:text="${fmt.won(i.balance_after)}"></td><td class="num" th:text="${i.version}"></td><td class="mono muted" th:text="${#strings.abbreviate(i.id, 13)}" th:title="${i.id}"></td></tr></tbody></table></div>
+            <th:block th:if="${#lists.isEmpty(investments)}"><div th:replace="~{owner/layout :: empty('투자가 없습니다', '')}"></div></th:block></div>
+        <div class="card flush"><header><h2>투자 요청 <span class="sub" th:text="${#lists.size(requests)} + '건'"></span></h2></header>
+            <div class="table-wrap"><table class="table compact"><thead><tr><th>결과</th><th>팀</th><th class="num">금액</th><th class="num">HTTP</th><th>오류</th><th>요청 키</th></tr></thead><tbody>
+            <tr th:each="r : ${requests}"><td><span class="badge" th:classappend="${r.status == 'REJECTED'} ? 'warn' : 'good'" th:text="${r.status}"></span></td><td th:text="${r.team_id}"></td><td class="num" th:text="${fmt.won(r.amount)}"></td><td class="num mono" th:text="${r.http_status ?: 201}"></td><td><span th:if="${r.error_code != null}" class="badge bad mono" th:text="${r.error_code}"></span></td><td class="mono muted" th:text="${#strings.abbreviate(r.request_key, 13)}" th:title="${r.request_key}"></td></tr></tbody></table></div>
+            <th:block th:if="${#lists.isEmpty(requests)}"><div th:replace="~{owner/layout :: empty('요청이 없습니다', '')}"></div></th:block></div>
     </section>
-    <section class="card"><h2>최근 활동 50건 <a class="quiet-link" th:href="@{/owner/activity(accountId=${account.id})}">전체 →</a></h2>
-        <table th:replace="~{owner/layout :: activityTable(${activity})}"></table></section>
+    <section class="card flush" style="margin-bottom:14px"><header><h2>세션</h2></header>
+        <div class="table-wrap"><table class="table compact"><thead><tr><th>상태</th><th>토큰 해시</th><th>만료</th><th>종료</th></tr></thead><tbody>
+        <tr th:each="s : ${sessions}"><td><span class="badge" th:classappend="${s.revoked_at == null} ? 'good' : 'neutral'" th:text="${s.revoked_at == null ? '활성/만료 대기' : '로그아웃'}"></span></td><td class="mono" th:text="${#strings.substring(s.token_hash, 0, 8)} + '…'"></td><td th:text="${fmt.isoTime(s.expires_at)}"></td><td th:text="${s.revoked_at != null ? fmt.isoTime(s.revoked_at) : '—'}"></td></tr></tbody></table></div>
+        <th:block th:if="${#lists.isEmpty(sessions)}"><div th:replace="~{owner/layout :: empty('세션 기록이 없습니다', '')}"></div></th:block></section>
+    <section class="card flush"><header><h2>최근 활동 <span class="sub">50건</span></h2><a class="btn quiet sm" th:href="@{/owner/activity(accountId=${account.id})}">전체 →</a></header>
+        <div class="table-wrap"><table th:replace="~{owner/layout :: activityTable(${activity})}"></table></div>
+        <th:block th:if="${#lists.isEmpty(activity)}"><div th:replace="~{owner/layout :: empty('활동이 없습니다', '아직 이 계정의 API 요청이 없습니다.')}"></div></th:block></section>
 </main>
+</div></div>
+<script src="/owner/assets/owner.js"></script>
 </body>
 </html>
