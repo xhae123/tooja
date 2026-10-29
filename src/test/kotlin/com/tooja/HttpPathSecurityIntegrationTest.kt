@@ -60,6 +60,11 @@ class HttpPathSecurityIntegrationTest {
         assertThat(login.headers().firstValue("Cache-Control").orElse("")).isEqualTo("no-store")
         assertThat(HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:$port/owner")).build(),HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(302)
         assertThat(send("/owner/assets/owner.css").statusCode()).isEqualTo(200)
+        Steps.step("Then Spring의 redirect: 응답도 상대 Location을 내보내 LB 뒤에서 http://로 되돌아가지 않는다") {
+            val redirect=HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:$port/reports/allure")).build(),HttpResponse.BodyHandlers.discarding())
+            assertThat(redirect.statusCode()).isEqualTo(302)
+            assertThat(redirect.headers().firstValue("Location").orElse("")).isEqualTo("/reports/allure/index.html")
+        }
     }
     @Test @DisplayName("Given 실제 소켓 loopback When ingest에 토큰 유무로 전송 Then 토큰 있으면 202, 없으면 404")
     fun ingestOverRealSocket() {
