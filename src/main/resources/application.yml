@@ -20,6 +20,9 @@ server:
   port: ${PORT:8080}
   error:
     include-message: never
+  tomcat:
+    # Behind the LB the app sees plain HTTP; absolute redirects would point browsers at http://.
+    use-relative-redirects: true
 management:
   endpoints:
     web:
