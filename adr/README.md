@@ -21,7 +21,7 @@
 - [0015 로그인 횟수는 브라우저에서 제한한다](0015-browser-login-limit.md)
 - [0016 API 문서는 컨트롤러에서 생성한다](0016-controller-generated-openapi.md)
 - [0017 CI에서는 단위·통합 테스트만 실행한다](0017-ci-excludes-e2e.md)
-- [0018 앱과 Allure는 같은 성공한 CI 산출물을 배포한다](0018-same-release-app-and-allure.md)
+- [0018 앱과 Allure는 같은 성공한 CI 산출물을 배포한다](0018-same-release-app-and-allure.md) — 0039로 일부 대체
 - [0019 앱 배포는 GitHub Actions를 통해서만 수행한다](0019-github-actions-only-deploy.md)
 - [0020 nginx는 한 번 연결하고 앱 배포마다 갱신하지 않는다](0020-nginx-configure-once.md)
 - [0021 배포와 DB 명단 삽입을 분리한다](0021-persistent-data-manual-provisioning.md)
@@ -54,3 +54,4 @@
 - [0037 인프라 지표를 앱 DB에 적재해 서비스 활동과 함께 보기](0037-infra-metrics-in-app-db.md)
 
 - [0038 팀은 번호로만 식별하고 팀 이름을 저장하지 않기](0038-teams-identified-by-number-only.md)
+- [0039 서버는 테스트 리포트를 제공하지 않는다](0039-no-hosted-test-report.md)

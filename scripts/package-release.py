@@ -1,4 +1,4 @@
-"""Package the successful run's JAR and report; never use tracked historical E2E HTML."""
+"""Package the successful run's JAR and deployment metadata; never use tracked historical E2E HTML."""
 import hashlib
 import json
 import os
@@ -28,7 +28,6 @@ files = {
     'Dockerfile': Path('deployment/Dockerfile'),
     'compose.yaml': Path('deployment/compose.yaml'),
     'deploy.sh': Path('deployment/deploy.sh'),
-    'reports/allure/index.html': Path('reports/ci-allure/index.html'),
     'reports/deployment.json': Path('build/deployment.json'),
 }
 with tarfile.open('build/release.tar.gz', 'w:gz') as archive:

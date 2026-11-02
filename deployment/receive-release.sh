@@ -9,7 +9,7 @@ release=$(python3 - "$archive" "$root" <<'PY'
 import hashlib,json,re,sys,tarfile
 from pathlib import Path
 archive,root=sys.argv[1],Path(sys.argv[2])
-allowed={'app.jar','Dockerfile','compose.yaml','deploy.sh','reports/allure/index.html','reports/deployment.json'}
+allowed={'app.jar','Dockerfile','compose.yaml','deploy.sh','reports/deployment.json'}
 with tarfile.open(archive,'r:gz') as bundle:
     entries=bundle.getmembers()
     if len(entries)!=len(allowed) or {m.name for m in entries}!=allowed or any(not m.isfile() for m in entries):

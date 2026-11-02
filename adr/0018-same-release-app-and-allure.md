@@ -24,7 +24,7 @@ OCI에서 테스트를 다시 만들거나 추적 중인 과거 리포트를 복
 
 ## 현재 상태와 구현 근거
 
-구현됨. /deployment.json과 Actions 실행으로 버전을 확인할 수 있습니다.
+일부 대체됨([ADR 0039](0039-no-hosted-test-report.md), 2026-11-02): 서버는 Allure를 더 이상 제공하지 않습니다. JAR와 커밋·테스트 메타데이터를 같은 성공 실행에서 배포하는 부분은 유지합니다. /deployment.json과 Actions 실행으로 버전을 확인할 수 있습니다.
 
 - [scripts/package-release.py](../scripts/package-release.py)
 - [.github/workflows/deploy.yaml](../.github/workflows/deploy.yaml)
