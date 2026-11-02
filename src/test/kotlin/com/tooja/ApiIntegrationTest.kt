@@ -269,6 +269,19 @@ abstract class ApiContractIntegrationTest {
         assertThat(mvc.perform(health).andReturn().response.status).isEqualTo(200)
     }
     fun failure(r: MockHttpServletResponse,status: Int,code: String) { Steps.step("Then HTTP $status · $code") { assertThat(r.status).isEqualTo(status);assertThat(json(r)["error"]["code"].asText()).isEqualTo(code);assertThat(r.getHeader("X-Request-ID")).isEqualTo(json(r)["requestId"].asText()) } }
+    @Test @DisplayName("Given 팀은 번호로만 식별 When 팀·거래·순위 API 조회 Then 응답에 팀 이름 필드가 없다") fun teamsHaveNoName() {
+        login();val receipt=json(invest(2,300000));login("admin","4821")
+        val bodies=Steps.step("When 팀 목록·상세·영수증·내역·거래 상세·관리자 투자자 상세·대시보드·투자자 순위 조회") {
+            listOf(receipt,json(call("GET","/api/v1/public/dashboard")),json(call("GET","/api/v1/admin/investors/inv_001")),json(call("GET","/api/v1/admin/investor-rankings"))).also { login() } +
+                listOf("/api/v1/investor/teams","/api/v1/investor/teams/2","/api/v1/investor/investments","/api/v1/investor/investments/${receipt["investment"]["investmentId"].asText()}").map { json(call("GET",it)) }
+        }
+        Steps.step("Then 어느 응답에도 serviceName이 없고 팀 번호와 소개는 그대로") {
+            bodies.forEach { assertThat(it.toString()).doesNotContain("serviceName") }
+            val team=json(call("GET","/api/v1/investor/teams/2"))["team"]
+            assertThat(team["teamId"].asInt()).isEqualTo(2);assertThat(team["description"].asText()).isNotBlank()
+            assertThat(receipt["investment"]["teamId"].asInt()).isEqualTo(2)
+        }
+    }
     @Test @DisplayName("등록 직후 로그인 전에도 100만원이 있고 로그인은 지급 원장을 변경하지 않는다") fun firstGrant() {
         assertThat(service.investor("inv_001").spendingStatus).isEqualTo("UNSPENT")
         val grantsBefore=db.jdbc.queryForList("SELECT * FROM grants ORDER BY account_id")

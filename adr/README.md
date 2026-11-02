@@ -52,3 +52,5 @@
 - [0036 조회 전용 조물주 콘솔과 DB 활동 기록](0036-owner-console-and-activity-log.md)
 
 - [0037 인프라 지표를 앱 DB에 적재해 서비스 활동과 함께 보기](0037-infra-metrics-in-app-db.md)
+
+- [0038 팀은 번호로만 식별하고 팀 이름을 저장하지 않기](0038-teams-identified-by-number-only.md)

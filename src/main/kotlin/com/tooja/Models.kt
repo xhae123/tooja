@@ -17,10 +17,10 @@ enum class InvestmentMode { RUNNING, PAUSED }
 @Schema(description="전체 투자 접수 상태. 중지해도 로그인·조회와 기존 영수증 복구는 가능합니다.")
 data class InvestmentStatus(val status: InvestmentMode, val revision: Long, val updatedAt: Instant?)
 data class InvestmentStatusInput(val status: InvestmentMode)
-data class Team(val teamId: Int, val serviceName: String, val description: String, val investmentState: String, val myInvestmentAmount: Int, val allowedAmounts: List<Int>)
+data class Team(val teamId: Int, val description: String, val investmentState: String, val myInvestmentAmount: Int, val allowedAmounts: List<Int>)
 data class TeamList(val investor: Investor, val teams: List<Team>, val asOf: Instant, val investmentStatus: InvestmentStatus)
 data class TeamDetail(val investor: Investor, val team: Team, val asOf: Instant, val investmentStatus: InvestmentStatus)
-data class Investment(val investmentId: String, val teamId: Int, val serviceName: String, val amount: Int, val confirmedAt: Instant)
+data class Investment(val investmentId: String, val teamId: Int, val amount: Int, val confirmedAt: Instant)
 data class InvestmentReceipt(val investment: Investment, val balanceAfterInvestment: Int, val snapshotVersion: Long)
 data class InvestmentDetail(val investment: Investment, val currentBalance: Int, val asOf: Instant)
 data class InvestmentHistory(val investor: Investor, val items: List<Investment>, val count: Int, val asOf: Instant)
@@ -33,7 +33,7 @@ data class Metrics(val registeredInvestorCount: Int, val investedInvestorCount: 
 data class Overview(val total: Metrics, val participants: Metrics, val staff: Metrics, val asOf: Instant, val snapshotVersion: Long, val investmentStatus: InvestmentStatus)
 data class InvestorList(val items: List<Investor>, val count: Int, val asOf: Instant)
 data class InvestorDetail(val investor: Investor, val investments: List<Investment>, val asOf: Instant)
-data class RankingRow(val rank: Int, val teamId: Int, val serviceName: String, val raisedAmount: Long)
+data class RankingRow(val rank: Int, val teamId: Int, val raisedAmount: Long)
 data class Dashboard(val snapshotVersion: Long, val asOf: Instant, val totalInvestedAmount: Long, val investedInvestorCount: Int, val teams: List<RankingRow>)
 
 class ApiException(val status: Int, val code: String, override val message: String, val details: Map<String,Any> = emptyMap(), val retryAfter: Int? = null): RuntimeException(message)
@@ -46,9 +46,10 @@ object Policy {
         else -> "AVAILABLE"
     }
     fun allowed(state: String, balance: Int) = if (state=="AVAILABLE") (100000..700000 step 100000).filter { it<=balance } else emptyList()
-    fun rank(rows: List<Triple<Int,String,Long>>): List<RankingRow> {
-        val sorted=rows.sortedWith(compareByDescending<Triple<Int,String,Long>> { it.third }.thenBy { it.first })
+    // rows: teamId to raised amount.
+    fun rank(rows: List<Pair<Int,Long>>): List<RankingRow> {
+        val sorted=rows.sortedWith(compareByDescending<Pair<Int,Long>> { it.second }.thenBy { it.first })
         var rank=0; var previous: Long?=null
-        return sorted.mapIndexed { i,t -> if(t.third!=previous) rank=i+1; previous=t.third; RankingRow(rank,t.first,t.second,t.third) }
+        return sorted.mapIndexed { i,t -> if(t.second!=previous) rank=i+1; previous=t.second; RankingRow(rank,t.first,t.second) }
     }
 }

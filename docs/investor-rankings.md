@@ -52,7 +52,7 @@ GET /api/v1/admin/investor-rankings?group=PARTICIPANT
       "teamId": 1,
       "score": 10,
       "contributions": [
-        { "teamId": 2, "serviceName": "서비스 A", "teamRank": 1, "investedAmount": 100000, "pointsPerUnit": 10, "score": 10 }
+        { "teamId": 2, "teamRank": 1, "investedAmount": 100000, "pointsPerUnit": 10, "score": 10 }
       ]
     },
     {

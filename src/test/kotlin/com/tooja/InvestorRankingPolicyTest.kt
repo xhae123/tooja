@@ -16,7 +16,7 @@ class InvestorRankingPolicyTest {
 
     private fun person(id: String, kind: String="PARTICIPANT", name: String=id) =
         RankingInvestor(id, name, kind, if (kind == "PARTICIPANT") 1 else null)
-    private fun team(id: Int, rank: Int) = RankingRow(rank, id, "팀$id", 100000L)
+    private fun team(id: Int, rank: Int) = RankingRow(rank, id, 100000L)
 
     @ParameterizedTest(name="Given 팀 {0}등 When 10만원당 배점 계산 Then {1}점")
     @CsvSource("1,10", "2,9", "3,8", "4,7", "5,6", "6,5", "7,4", "8,3", "9,2", "10,1",
@@ -153,7 +153,7 @@ class InvestorRankingPolicyTest {
     fun tiedTeams() {
         Steps.step("Given 팀1·2가 70만원, 팀3은 30만원, 나머지는 0원")
         val teams = Steps.step("When 팀 순위·배점 계산") {
-            InvestorRankingPolicy.teamRanks((1..20).map { Triple(it,"팀$it",when(it) { 1,2 -> 700000L;3 -> 300000L;else -> 0L }) })
+            InvestorRankingPolicy.teamRanks((1..20).map { it to when(it) { 1,2 -> 700000L;3 -> 300000L;else -> 0L } })
         }
         Steps.step("Then 공동 1·1·3 배점 10·10·8, 0원 팀은 공동 20등") {
             assertThat(teams.take(3).map { it.rank }).containsExactly(1,1,3)
@@ -165,7 +165,7 @@ class InvestorRankingPolicyTest {
     @Test @DisplayName("Given 모든 팀 0원 When 성과용 팀 순위 계산 Then 모두 공동 20등")
     fun allTeamsZero() {
         Steps.step("Given 20개 팀의 유치액이 모두 0원")
-        val teams = Steps.step("When 성과 계산용 순위 조회") { InvestorRankingPolicy.teamRanks((1..20).map { Triple(it,"팀$it",0L) }) }
+        val teams = Steps.step("When 성과 계산용 순위 조회") { InvestorRankingPolicy.teamRanks((1..20).map { it to 0L }) }
         Steps.step("Then 모두 20등, 배점 -10점") { assertThat(teams.map { it.rank }).containsOnly(20);assertThat(teams.map { InvestorRankingPolicy.points(it.rank) }).containsOnly(-10) }
     }
 

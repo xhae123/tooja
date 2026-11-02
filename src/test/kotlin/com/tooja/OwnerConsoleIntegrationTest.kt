@@ -204,13 +204,14 @@ abstract class OwnerConsoleContractTest {
         assertThat(db.jdbc.queryForList("SELECT request_id FROM activity_log", String::class.java)).containsExactly("req_new")
         assertThat(db.jdbc.queryForObject("SELECT COUNT(*) FROM infra_samples", Int::class.java)).isEqualTo(1)
     }
-    @Test @DisplayName("Given 두 엔진 When 운영 테이블 컬럼을 조회 Then Flyway V3와 SQLite DDL이 같은 열을 가진다")
+    @Test @DisplayName("Given 두 엔진 When 운영 테이블 컬럼을 조회 Then Flyway와 SQLite DDL이 같은 열을 가진다")
     fun schemaParity() {
         fun columns(table: String) = db.jdbc.queryForRowSet("SELECT * FROM $table WHERE 1=0").metaData.let { m -> (1..m.columnCount).map { m.getColumnName(it).lowercase() } }
         assertThat(columns("activity_log")).containsExactly("id", "ts", "request_id", "method", "route", "status", "duration_ms", "actor_role", "account_id", "action", "error_code", "team_id", "investment_id", "amount", "origin", "client_ip", "remote_addr", "user_agent")
         assertThat(columns("infra_samples")).containsExactly("id", "ts", "source", "metric", "sample_value", "dims")
         assertThat(columns("system_events")).containsExactly("id", "ts", "type", "detail")
         assertThat(columns("owner_sessions")).containsExactly("token_hash", "csrf", "created_at", "expires_at", "revoked_at", "client_ip", "user_agent")
+        assertThat(columns("teams")).containsExactly("id", "description")
     }
     @Test @DisplayName("Given 조물주 쿠키만 When 관리자 API 호출 Then 401이고, 관리자 쿠키로 조물주 페이지는 302")
     fun rolesStaySeparate() {

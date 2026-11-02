@@ -45,12 +45,12 @@ class PolicyTest {
     }
     @Test @DisplayName("경쟁 순위는 1·1·3이며 동률은 팀 번호순이다") fun rankings() {
         Steps.step("Given 팀02와 팀01이 70만원, 팀03이 30만원")
-        val rows=Steps.step("When 순위를 계산한다") { Policy.rank(listOf(Triple(2,"B",700000L),Triple(3,"C",300000L),Triple(1,"A",700000L))) }
+        val rows=Steps.step("When 순위를 계산한다") { Policy.rank(listOf(2 to 700000L,3 to 300000L,1 to 700000L)) }
         Steps.step("Then 순위 1·1·3, 팀 순서 1·2·3") { assertThat(rows.map{it.rank}).containsExactly(1,1,3);assertThat(rows.map{it.teamId}).containsExactly(1,2,3) }
     }
     @Test @DisplayName("모든 팀이 0원이면 모두 공동 1위다") fun zeroRankings() {
         Steps.step("Given 20개 팀 모두 유치금 0원")
-        val rows=Steps.step("When 순위를 계산한다") { Policy.rank((20 downTo 1).map { Triple(it,"팀$it",0L) }) }
+        val rows=Steps.step("When 순위를 계산한다") { Policy.rank((20 downTo 1).map { it to 0L }) }
         Steps.step("Then 모두 1위이고 팀 번호 오름차순") { assertThat(rows.map{it.rank}).containsOnly(1);assertThat(rows.map{it.teamId}).containsExactlyElementsOf((1..20).toList()) }
     }
     @Test @DisplayName("서버 요청 제한은 역할·계정별이며 60초가 되면 해제된다") fun rateLimits() {

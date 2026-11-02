@@ -328,7 +328,7 @@ abstract class InvestorRankingApiContractTest {
     fun databaseFailure() {
         signIn()
         doThrow(org.springframework.dao.DataAccessResourceFailureException("test read failure"))
-            .`when`(jdbc).queryForList("SELECT id,name FROM teams ORDER BY id")
+            .`when`(jdbc).queryForList("SELECT id FROM teams ORDER BY id")
         val response=Steps.step("When 저장소를 읽을 수 없음") { getRanking() }
         Steps.step("Then SERVICE_UNAVAILABLE·Retry-After 5") { error(response,503,"SERVICE_UNAVAILABLE");assertThat(response.getHeader("Retry-After")).isEqualTo("5") }
     }
@@ -337,7 +337,7 @@ abstract class InvestorRankingApiContractTest {
     fun unexpectedFailure() {
         signIn()
         doThrow(IllegalStateException("test unexpected failure"))
-            .`when`(jdbc).queryForList("SELECT id,name FROM teams ORDER BY id")
+            .`when`(jdbc).queryForList("SELECT id FROM teams ORDER BY id")
         val response=Steps.step("When 예상하지 못한 실행 오류 발생") { getRanking() }
         Steps.step("Then INTERNAL_ERROR, 내부 예외 메시지는 노출하지 않음") {
             error(response,500,"INTERNAL_ERROR")
@@ -358,7 +358,7 @@ abstract class InvestorRankingApiContractTest {
             captured.countDown()
             check(release.await(15,TimeUnit.SECONDS))
             rows
-        }.`when`(jdbc).queryForList("SELECT id,name FROM teams ORDER BY id")
+        }.`when`(jdbc).queryForList("SELECT id FROM teams ORDER BY id")
         try {
             val reading=pool.submit<MockHttpServletResponse> { getRanking() }
             check(captured.await(15,TimeUnit.SECONDS))
