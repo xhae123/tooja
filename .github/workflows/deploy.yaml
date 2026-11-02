@@ -49,29 +49,17 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # gradle/actions/setup-gradle@v6.4.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # actions/setup-node@v7.0.0
-        with:
-          node-version: '22'
-      - name: Install report generator only (no Playwright)
-        run: npm ci --prefix ci --ignore-scripts
       - name: Test and build deployable JAR
         run: ./gradlew clean test bootJar
-      - name: Generate Allure from this run's JVM results only
-        if: always()
-        run: |
-          node scripts/prepare-allure.mjs --jvm-only
-          ci/node_modules/.bin/allure generate reports/raw/allure-prepared --clean --single-file -o reports/ci-allure
       - name: Preserve test evidence, including failures
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # actions/upload-artifact@v7.0.1
         with:
           name: test-evidence-${{ github.run_number }}
           path: |
-            reports/ci-allure
             build/test-results/test
             build/reports/tests/test
             build/reports/jacoco/test
-            reports/raw/allure-prepared
           retention-days: 14
       - name: Package tested release
         if: success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -124,7 +112,7 @@ jobs:
           m=json.loads(evidence[0])
           assert m['commit']==os.environ['EXPECTED_COMMIT'],m
           assert m['tests']['e2e']==0 and m['tests']['failed']==0,m
-          print('Managed edge health/OpenAPI/Allure verified on host. Deployed commit:',m['commit'],'Tests:',m['tests'])
+          print('Managed edge health/OpenAPI verified on host. Deployed commit:',m['commit'],'Tests:',m['tests'])
           PY
           # shellcheck disable=SC2016
-          printf 'Deployed `%s`\n\n- [Swagger](%s/api-docs)\n- [Allure: unit/integration only](%s/reports/allure/)\n' "$EXPECTED_COMMIT" "$APP_URL" "$APP_URL" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Deployed `%s`\n\n- [Swagger](%s/api-docs)\n' "$EXPECTED_COMMIT" "$APP_URL" >> "$GITHUB_STEP_SUMMARY"

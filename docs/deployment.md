@@ -3,15 +3,14 @@
 API는 OCI LB의 공인 IP에 연결해요. 앱 VM의 예약 IP는 SSH 관리에 사용해요. 현재 연결 주소는 `https://api.leafeep.com`입니다.
 
 - [API Swagger](https://api.leafeep.com/api-docs)
-- [현재 배포의 Allure](https://api.leafeep.com/reports/allure/): 단위·통합만 포함
 - [배포 커밋·CI 실행·테스트 건수](https://api.leafeep.com/deployment.json)
 - [GitHub Actions](https://github.com/xhae123/tooja/actions)
 
 ## 배포 흐름
 
-앱·테스트·배포 설정이 바뀐 main push → GitHub-hosted runner에서 Java 17 단위·통합 테스트 → JAR와 이번 실행의 Allure 생성 → 성공한 산출물만 OCI 배포 → SSH로 인증된 서버에서 OCI LB를 거친 상태·커밋 확인 순서입니다. PR은 테스트만 합니다. ADR·README·docs 등 문서만 바뀌면 자동 실행하지 않습니다. workflow_dispatch로는 명시적으로 실행할 수 있습니다. E2E 실행·Playwright 설치·기존 E2E 결과 병합은 CI에 없습니다. `ci/package-lock.json`은 Allure CLI만 설치합니다.
+앱·테스트·배포 설정이 바뀐 main push → GitHub-hosted runner에서 Java 17 단위·통합 테스트 → JAR 생성 → 성공한 산출물만 OCI 배포 → SSH로 인증된 서버에서 OCI LB를 거친 상태·커밋 확인 순서입니다. PR은 테스트만 합니다. ADR·README·docs 등 문서만 바뀌면 자동 실행하지 않습니다. workflow_dispatch로는 명시적으로 실행할 수 있습니다. E2E 실행·Playwright 설치·기존 E2E 결과 병합은 CI에 없습니다.
 
-배포된 Allure와 앱은 같은 실행·커밋의 산출물입니다. 실패한 테스트 실행은 GitHub artifact에 남기고 기존 앱·리포트를 유지합니다. 각 실행의 증거는 14일 보관합니다. 현재 서버의 Allure는 최신 성공 배포 결과이며 과거 E2E HTML은 저장소의 별도 실행 기록입니다. Swagger는 실제 앱의 컨트롤러에서 자동 생성합니다.
+서버는 테스트 리포트(Allure)를 제공하지 않습니다([ADR 0039](../adr/0039-no-hosted-test-report.md)). 각 실행의 JUnit·JaCoCo 결과는 성공·실패와 관계없이 GitHub artifact로 14일 보관하고, 실패한 실행은 기존 앱을 유지합니다. Swagger는 실제 앱의 컨트롤러에서 자동 생성합니다.
 
 SSH 배포 키는 oci environment에 저장하고 main 브랜치에서만 사용합니다. 서버는 해당 키의 접속을 배포 수신 명령으로 제한합니다. 기존 관리자 SSH 키를 Actions에 등록하지 않습니다. 배포 패키지는 JAR checksum, 파일 allowlist, 커밋·테스트 메타데이터를 검사합니다.
 
@@ -66,8 +65,8 @@ export default defineConfig({
 
 certbot은 HTTP-01로 인증서를 갱신해요. 별도 `tooja-lb-certificate-sync.timer`가 변경된 인증서만 LB에 반영하고 HTTPS 인증서 fingerprint를 확인해요. 앱 CI/CD는 이 작업을 실행하지 않아요.
 
-배포 확인은 SSH로 인증된 서버에서 LB의 HTTPS 주소를 거쳐 health·OpenAPI·Allure·커밋을 검사해요. LB의 backend 상태 반영을 기다리며 인증서 검증은 끄지 않아요. 자세한 보호 범위는 [접속 보호](edge-protection.md)를 보세요.
+배포 확인은 SSH로 인증된 서버에서 LB의 HTTPS 주소를 거쳐 health·OpenAPI·조물주 로그인 화면·커밋을 검사해요. LB의 backend 상태 반영을 기다리며 인증서 검증은 끄지 않아요. 자세한 보호 범위는 [접속 보호](edge-protection.md)를 보세요.
 
 ## 이전 산출물 삭제
 
-새 버전의 검증이 성공하면 이전 Tooja 이미지·릴리스(JAR·배포 파일·Allure)를 전부 삭제하고 현재 버전만 남겨요. 전용 builder 캐시만 정리해요. DB와 DB 백업은 삭제 대상이 아니에요. 성공 후 과거 커밋으로 돌아가려면 Actions로 다시 배포해요.
+새 버전의 검증이 성공하면 이전 Tooja 이미지·릴리스(JAR·배포 파일)를 전부 삭제하고 현재 버전만 남겨요. 전용 builder 캐시만 정리해요. DB와 DB 백업은 삭제 대상이 아니에요. 성공 후 과거 커밋으로 돌아가려면 Actions로 다시 배포해요.

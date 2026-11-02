@@ -13,9 +13,8 @@ docker compose up -d --build --wait
 - 공개 순위: http://localhost:18080/dashboard
 - 컨트롤러 자동 생성 API 문서: http://localhost:18080/api-docs
 - OpenAPI JSON: http://localhost:18080/v3/api-docs
-- Allure 통합 리포트: http://localhost:18080/reports/allure/
 
-Allure는 생성된 HTML·데이터를 Spring에서 제공하고 브라우저의 JavaScript가 리포트 화면을 그립니다. 로컬 demo/test에서는 리포트를 활성화하며 실제 배포에서는 REPORTS_ENABLED 설정으로 활성화합니다. 로컬 Compose는 생성된 Allure 폴더를 읽기 전용으로 연결합니다. 리포트를 다시 생성하면 서버 재빌드 없이 최신 파일이 반영됩니다.
+서버는 Allure 리포트를 제공하지 않습니다. `npm run report:allure`로 만든 `reports/allure/index.html`은 단일 HTML이므로 브라우저에서 파일로 직접 엽니다.
 
 기본 Compose는 **데모 데이터**를 사용하는 로컬 API 환경입니다. 참가자 `0037`(팀01), `0038`(팀03), `0039`(팀04), `0040`(팀05), 운영팀 투자자 `1000`, 관리자 `4821`. 코드는 문자열이며 실제 행사용 발급 코드가 아닙니다. 팀은 `TEAM 01`~`TEAM 20` 번호로만 식별하며 이름은 저장하지 않습니다. 데모의 팀 소개는 예시입니다. 백엔드는 UI를 제공하지 않으며 루트 경로(`/`)는 404를 반환합니다. 실제 프론트엔드는 Vercel에서 제공됩니다.
 

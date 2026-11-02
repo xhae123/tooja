@@ -9,7 +9,6 @@ Kotlin · Spring Boot · MySQL(운영) · SQLite(로컬 데모). 투자자·관�
 - [현재 API 명세](https://api.leafeep.com/api-docs): Swagger 호출 방법·응답·오류
 - [현재 OpenAPI JSON](https://api.leafeep.com/v3/api-docs): 배포된 컨트롤러에서 생성한 명세
 - [화면별 품질 검증서](reports/quality.html): E2E 분기·번호별 화면 캡처·실행 결과
-- [현재 CI Allure](https://api.leafeep.com/reports/allure/): 단위·통합 결과
 - [과거 통합 리포트](reports/allure/index.html): 단위·통합·E2E 실행 기록
 - [서버 구현](src/main/kotlin/com/tooja) · [단위·통합 테스트](src/test/kotlin/com/tooja) · [E2E 테스트](e2e)
 

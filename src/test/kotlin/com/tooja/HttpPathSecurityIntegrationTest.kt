@@ -61,9 +61,14 @@ class HttpPathSecurityIntegrationTest {
         assertThat(HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:$port/owner")).build(),HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(302)
         assertThat(send("/owner/assets/owner.css").statusCode()).isEqualTo(200)
         Steps.step("Then Spring의 redirect: 응답도 상대 Location을 내보내 LB 뒤에서 http://로 되돌아가지 않는다") {
-            val redirect=HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:$port/reports/allure")).build(),HttpResponse.BodyHandlers.discarding())
+            val redirect=HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:$port/owner/logout"))
+                .header("Content-Type","application/x-www-form-urlencoded").POST(HttpRequest.BodyPublishers.ofString("_csrf=x")).build(),HttpResponse.BodyHandlers.discarding())
             assertThat(redirect.statusCode()).isEqualTo(302)
-            assertThat(redirect.headers().firstValue("Location").orElse("")).isEqualTo("/reports/allure/index.html")
+            assertThat(redirect.headers().firstValue("Location").orElse("")).isEqualTo("/owner/login")
+        }
+        Steps.step("Then 테스트 리포트(Allure)는 서버가 제공하지 않는다") {
+            assertThat(send("/reports/allure/index.html").statusCode()).isEqualTo(404)
+            assertThat(send("/reports/allure").statusCode()).isEqualTo(404)
         }
     }
     @Test @DisplayName("Given 실제 소켓 loopback When ingest에 토큰 유무로 전송 Then 토큰 있으면 202, 없으면 404")

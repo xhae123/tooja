@@ -5,7 +5,6 @@
 ## 먼저 여기부터 열어보세요
 
 - [API 문서](https://api.leafeep.com/api-docs): 요청 값, 응답 필드, 오류가 나는 조건은 여기를 봐주세요.
-- [테스트 리포트](https://api.leafeep.com/reports/allure/): 현재 배포의 단위·통합 테스트 결과예요. E2E는 포함하지 않아요.
 
 API 호스트의 예전 SSR 화면과 공개 테스트 계정 명단은 제거했어요. `https://api.leafeep.com/`은 화면을 제공하지 않으며, 관리자 계정 조회 API는 관리자 세션이 있어야 사용할 수 있어요.
 
