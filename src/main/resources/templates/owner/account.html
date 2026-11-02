@@ -11,7 +11,7 @@
         <span class="avatar" th:text="${#strings.substring(account.alias,0,1)}"></span>
         <div style="flex:1;min-width:200px">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong style="font-size:16px" th:text="${account.alias}"></strong><span class="badge" th:classappend="${account.role == 'ADMIN'} ? 'info' : 'neutral'" th:text="${account.role}"></span><span th:if="${account.kind != null}" class="badge neutral" th:text="${account.kind}"></span><span th:if="${account.deleted_at != null}" class="badge bad">삭제됨</span></div>
-            <div class="muted" style="font-size:12.5px"><code th:text="${account.id}"></code> · 팀 <span th:text="${account.team_id != null ? account.team_id + ' ' + account.team_name : '없음'}"></span> · 지급 <span th:text="${fmt.isoTime(account.granted_at)}"></span></div>
+            <div class="muted" style="font-size:12.5px"><code th:text="${account.id}"></code> · 팀 <span th:text="${account.team_id != null ? fmt.team(account.team_id) : '없음'}"></span> · 지급 <span th:text="${fmt.isoTime(account.granted_at)}"></span></div>
         </div>
         <div style="display:flex;gap:24px">
             <div><div class="muted" style="font-size:11.5px">잔액</div><div style="font-size:18px;font-weight:650" th:text="${account.role == 'INVESTOR' ? fmt.won(account.balance) : '—'}"></div></div>
@@ -25,7 +25,7 @@
     <section class="grid-2">
         <div class="card flush"><header><h2>투자 <span class="sub" th:text="${#lists.size(investments)} + '건'"></span></h2></header>
             <div class="table-wrap"><table class="table compact"><thead><tr><th>확정 시각</th><th>팀</th><th class="num">금액</th><th class="num">잔액 후</th><th class="num">버전</th><th>ID</th></tr></thead><tbody>
-            <tr th:each="i : ${investments}"><td th:text="${fmt.isoTime(i.confirmed_at)}"></td><td th:text="${i.team_id} + ' · ' + ${i.name}"></td><td class="num" th:text="${fmt.won(i.amount)}"></td><td class="num" th:text="${fmt.won(i.balance_after)}"></td><td class="num" th:text="${i.version}"></td><td class="mono muted" th:text="${#strings.abbreviate(i.id, 13)}" th:title="${i.id}"></td></tr></tbody></table></div>
+            <tr th:each="i : ${investments}"><td th:text="${fmt.isoTime(i.confirmed_at)}"></td><td th:text="${fmt.team(i.team_id)}"></td><td class="num" th:text="${fmt.won(i.amount)}"></td><td class="num" th:text="${fmt.won(i.balance_after)}"></td><td class="num" th:text="${i.version}"></td><td class="mono muted" th:text="${#strings.abbreviate(i.id, 13)}" th:title="${i.id}"></td></tr></tbody></table></div>
             <th:block th:if="${#lists.isEmpty(investments)}"><div th:replace="~{owner/layout :: empty('투자가 없습니다', '')}"></div></th:block></div>
         <div class="card flush"><header><h2>투자 요청 <span class="sub" th:text="${#lists.size(requests)} + '건'"></span></h2></header>
             <div class="table-wrap"><table class="table compact"><thead><tr><th>결과</th><th>팀</th><th class="num">금액</th><th class="num">HTTP</th><th>오류</th><th>요청 키</th></tr></thead><tbody>

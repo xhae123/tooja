@@ -23,7 +23,7 @@
             <tr th:each="a : ${rows}">
                 <td><a class="row-link" th:href="@{/owner/accounts/{id}(id=${a.id})}" th:text="${a.alias}"></a><span class="sub mono" th:text="${a.id}"></span><span th:if="${a.deleted_at != null}" class="badge bad" style="margin-left:6px">삭제됨</span></td>
                 <td><span class="badge" th:classappend="${a.role == 'ADMIN'} ? 'info' : 'neutral'" th:text="${a.role}"></span> <span class="muted" th:text="${a.kind ?: ''}"></span></td>
-                <td th:text="${a.team_id != null ? a.team_id + ' · ' + a.team_name : '—'}"></td>
+                <td th:text="${fmt.team(a.team_id)}"></td>
                 <td th:if="${a.role == 'INVESTOR'}"><div style="display:flex;align-items:center;gap:8px"><span class="bar" th:classappend="${a.balance == 0}?'good'" style="width:90px"><i th:style="'width:' + ${a.balance / 10000} + '%'"></i></span><span class="mono" th:text="${fmt.won(a.balance)}"></span></div></td>
                 <td th:unless="${a.role == 'INVESTOR'}" class="muted">—</td>
                 <td class="num"><span th:text="${a.invest_count}"></span><span class="sub" th:text="${fmt.won(a.invested)}"></span></td>

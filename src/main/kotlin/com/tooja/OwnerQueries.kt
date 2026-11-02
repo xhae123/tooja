@@ -17,6 +17,8 @@ object OwnerFormat {
     fun iso(ms: Long?): String = ms?.let { Instant.ofEpochMilli(it).toString() } ?: ""
     fun isoTime(value: Any?): String = value?.toString()?.let { runCatching { full.format(Instant.parse(it)) }.getOrDefault(it) } ?: "-"
     fun won(value: Any?): String = (value as? Number)?.let { "%,d원".format(it.toLong()) } ?: "-"
+    // Teams are identified by number only; there is no team name.
+    fun team(id: Any?): String = (id as? Number)?.let { "TEAM %02d".format(it.toInt()) } ?: "—"
     fun num(value: Any?): String = when (val n = value as? Number) { null -> "-"; else -> if (n.toDouble() % 1.0 == 0.0) "%,d".format(n.toLong()) else "%,.1f".format(n.toDouble()) }
     fun pct(value: Any?): String = (value as? Number)?.let { "%.1f%%".format(it.toDouble()) } ?: "-"
     fun bytes(value: Any?): String { val b = (value as? Number)?.toDouble() ?: return "-"; return if (b >= 1e9) "%.2f GB".format(b / 1e9) else if (b >= 1e6) "%.1f MB".format(b / 1e6) else "%.0f KB".format(b / 1e3) }
@@ -123,7 +125,7 @@ class OwnerQueries(private val db: Database, private val clock: Clock, private v
     fun accounts(f: Map<String, String?>): List<Map<String, Any?>> = db.snapshot {
         val nowIso = clock.instant().toString()
         // Never select code_hash: the console shows who exists, never how they log in.
-        val rows = db.jdbc.queryForList("""SELECT a.id,a.alias,a.role,a.kind,a.team_id,t.name AS team_name,a.balance,a.deleted_at,g.granted_at,
+        val rows = db.jdbc.queryForList("""SELECT a.id,a.alias,a.role,a.kind,a.team_id,a.balance,a.deleted_at,g.granted_at,
             (SELECT COUNT(*) FROM investments i WHERE i.account_id=a.id) AS invest_count,
             (SELECT COALESCE(SUM(i.amount),0) FROM investments i WHERE i.account_id=a.id) AS invested,
             (SELECT COUNT(*) FROM requests r WHERE r.account_id=a.id AND r.status='REJECTED') AS rejected,
@@ -131,7 +133,7 @@ class OwnerQueries(private val db: Database, private val clock: Clock, private v
             (SELECT MAX(l.ts) FROM activity_log l WHERE l.account_id=a.id) AS last_seen,
             (SELECT COUNT(*) FROM activity_log l WHERE l.account_id=a.id) AS requests,
             (SELECT COUNT(*) FROM sessions s WHERE s.account_id=a.id AND s.revoked_at IS NULL AND s.expires_at>?) AS active_sessions
-            FROM accounts a LEFT JOIN teams t ON t.id=a.team_id LEFT JOIN grants g ON g.account_id=a.id ORDER BY a.role,a.kind,a.team_id,a.id""", nowIso)
+            FROM accounts a LEFT JOIN grants g ON g.account_id=a.id ORDER BY a.role,a.kind,a.team_id,a.id""", nowIso)
         val q = f["q"]?.trim()?.takeIf(String::isNotEmpty)?.lowercase(); val team = f["teamId"]?.toIntOrNull()
         rows.filter { r ->
             (f["role"].isNullOrBlank() || r["role"] == f["role"]) && (f["kind"].isNullOrBlank() || r["kind"] == f["kind"]) && (team == null || (r["team_id"] as Number?)?.toInt() == team) &&
@@ -140,10 +142,10 @@ class OwnerQueries(private val db: Database, private val clock: Clock, private v
         }
     }
     fun account(id: String): Map<String, Any?>? = db.snapshot {
-        val row = db.jdbc.queryForList("SELECT a.id,a.alias,a.role,a.kind,a.team_id,t.name AS team_name,a.balance,a.deleted_at,g.granted_at,g.amount AS granted FROM accounts a LEFT JOIN teams t ON t.id=a.team_id LEFT JOIN grants g ON g.account_id=a.id WHERE a.id=?", id).firstOrNull() ?: return@snapshot emptyMap<String, Any?>()
+        val row = db.jdbc.queryForList("SELECT a.id,a.alias,a.role,a.kind,a.team_id,a.balance,a.deleted_at,g.granted_at,g.amount AS granted FROM accounts a LEFT JOIN grants g ON g.account_id=a.id WHERE a.id=?", id).firstOrNull() ?: return@snapshot emptyMap<String, Any?>()
         mapOf("account" to row,
             "sessions" to db.jdbc.queryForList("SELECT token_hash,role,expires_at,revoked_at FROM sessions WHERE account_id=? ORDER BY expires_at DESC LIMIT 50", id),
-            "investments" to db.jdbc.queryForList("SELECT i.id,i.team_id,t.name,i.amount,i.confirmed_at,i.balance_after,i.version FROM investments i JOIN teams t ON t.id=i.team_id WHERE i.account_id=? ORDER BY i.confirmed_at DESC", id),
+            "investments" to db.jdbc.queryForList("SELECT i.id,i.team_id,i.amount,i.confirmed_at,i.balance_after,i.version FROM investments i WHERE i.account_id=? ORDER BY i.confirmed_at DESC", id),
             "requests" to db.jdbc.queryForList("SELECT request_key,team_id,amount,status,investment_id,http_status,error_code FROM requests WHERE account_id=? ORDER BY request_key", id),
             "activity" to db.jdbc.queryForList("SELECT * FROM activity_log WHERE account_id=? ORDER BY id DESC LIMIT 50", id),
             "now" to clock.millis())
@@ -161,10 +163,10 @@ class OwnerQueries(private val db: Database, private val clock: Clock, private v
         val where = ArrayList<String>(); val args = ArrayList<Any>()
         team?.let { where.add("i.team_id=?"); args.add(it) }; account?.let { where.add("i.account_id=?"); args.add(it) }
         val clause = if (where.isEmpty()) "" else " WHERE " + where.joinToString(" AND ")
-        val succeeded = if (f["status"] == "REJECTED") emptyList() else db.jdbc.queryForList("SELECT i.id,i.account_id,a.alias,a.kind,i.team_id,t.name,i.amount,i.confirmed_at,i.balance_after,i.version FROM investments i JOIN teams t ON t.id=i.team_id JOIN accounts a ON a.id=i.account_id$clause ORDER BY i.confirmed_at DESC,i.version DESC LIMIT 500", *args.toTypedArray())
+        val succeeded = if (f["status"] == "REJECTED") emptyList() else db.jdbc.queryForList("SELECT i.id,i.account_id,a.alias,a.kind,i.team_id,i.amount,i.confirmed_at,i.balance_after,i.version FROM investments i JOIN accounts a ON a.id=i.account_id$clause ORDER BY i.confirmed_at DESC,i.version DESC LIMIT 500", *args.toTypedArray())
         val rejectedClause = clause.replace("i.", "r.") + (if (where.isEmpty()) " WHERE " else " AND ") + "r.status='REJECTED'"
-        val rejected = if (f["status"] == "SUCCEEDED") emptyList() else db.jdbc.queryForList("SELECT r.account_id,a.alias,r.team_id,t.name,r.amount,r.http_status,r.error_code,r.error_message,r.request_key FROM requests r JOIN accounts a ON a.id=r.account_id LEFT JOIN teams t ON t.id=r.team_id$rejectedClause ORDER BY r.account_id,r.request_key LIMIT 500", *args.toTypedArray())
-        val teams = db.jdbc.queryForList("SELECT t.id,t.name,COALESCE(SUM(i.amount),0) AS amount,COUNT(i.id) AS n FROM teams t LEFT JOIN investments i ON i.team_id=t.id GROUP BY t.id,t.name ORDER BY amount DESC,t.id")
+        val rejected = if (f["status"] == "SUCCEEDED") emptyList() else db.jdbc.queryForList("SELECT r.account_id,a.alias,r.team_id,r.amount,r.http_status,r.error_code,r.error_message,r.request_key FROM requests r JOIN accounts a ON a.id=r.account_id$rejectedClause ORDER BY r.account_id,r.request_key LIMIT 500", *args.toTypedArray())
+        val teams = db.jdbc.queryForList("SELECT t.id,COALESCE(SUM(i.amount),0) AS amount,COUNT(i.id) AS n FROM teams t LEFT JOIN investments i ON i.team_id=t.id GROUP BY t.id ORDER BY amount DESC,t.id")
         mapOf("succeeded" to succeeded, "rejected" to rejected, "teams" to teams)
     }
 

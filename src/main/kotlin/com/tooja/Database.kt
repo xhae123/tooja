@@ -49,7 +49,7 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
         jdbc.execute("PRAGMA journal_mode=WAL")
         jdbc.execute("PRAGMA busy_timeout=10000")
         listOf(
-            "CREATE TABLE IF NOT EXISTS teams(id INTEGER PRIMARY KEY CHECK(id BETWEEN 1 AND 20), name TEXT NOT NULL, description TEXT NOT NULL)",
+            "CREATE TABLE IF NOT EXISTS teams(id INTEGER PRIMARY KEY CHECK(id BETWEEN 1 AND 20), description TEXT NOT NULL)",
             "CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, code_hash TEXT NOT NULL UNIQUE, role TEXT NOT NULL CHECK(role IN ('INVESTOR','ADMIN')), kind TEXT CHECK(kind IN ('PARTICIPANT','STAFF')), team_id INTEGER REFERENCES teams(id), alias TEXT NOT NULL, balance INTEGER NOT NULL DEFAULT 0 CHECK(balance BETWEEN 0 AND 1000000), deleted_at TEXT, CHECK((role='ADMIN' AND kind IS NULL AND team_id IS NULL) OR (role='INVESTOR' AND kind IS NOT NULL AND ((kind='PARTICIPANT' AND team_id IS NOT NULL) OR (kind='STAFF' AND team_id IS NULL)))))",
             "CREATE TABLE IF NOT EXISTS grants(account_id TEXT PRIMARY KEY REFERENCES accounts(id), amount INTEGER NOT NULL CHECK(amount=1000000), granted_at TEXT NOT NULL)",
             "CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY, role TEXT NOT NULL, account_id TEXT REFERENCES accounts(id), csrf TEXT NOT NULL, expires_at TEXT NOT NULL, revoked_at TEXT)",
@@ -75,12 +75,14 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
             "CREATE INDEX IF NOT EXISTS ix_events_ts ON system_events(ts)",
             "CREATE INDEX IF NOT EXISTS ix_events_type_ts ON system_events(type,ts)"
         ).forEach(jdbc::execute)
+        // SQLite files created before team names were removed (MySQL: Flyway V4).
+        if (jdbc.queryForList("PRAGMA table_info(teams)").any { it["name"] == "name" }) jdbc.execute("ALTER TABLE teams DROP COLUMN name")
         }
         require(provisioningMode in listOf("required","manual")) { "Unknown provisioning mode" }
         if (env.activeProfiles.any { it in listOf("demo","test") }) seedDemo() else if(provisioningMode=="required") importProvisioning()
     }
     fun seedDemo() = write {
-        for (id in 1..20) jdbc.update(insertIgnore("INSERT OR IGNORE INTO teams VALUES(?,?,?)"), id,"팀%02d 데모 서비스".format(id),"팀%02d 부스에서 서비스를 체험하고 투자해 보세요.".format(id))
+        for (id in 1..20) jdbc.update(insertIgnore("INSERT OR IGNORE INTO teams(id,description) VALUES(?,?)"), id,"팀%02d 부스에서 서비스를 체험하고 투자해 보세요.".format(id))
         val fixtures=listOf(listOf("inv_001","0037","INVESTOR","PARTICIPANT",1,"팀01 투자자001"),listOf("inv_002","0038","INVESTOR","PARTICIPANT",3,"팀03 투자자002"),listOf("inv_003","0039","INVESTOR","PARTICIPANT",4,"팀04 투자자003"),listOf("inv_004","0040","INVESTOR","PARTICIPANT",5,"팀05 투자자004"),listOf("staff_001","1000","INVESTOR","STAFF",null,"운영팀 투자자001"),listOf("admin_001","4821","ADMIN",null,null,"관리자"))
         fixtures.forEach { a -> insertAccount(a[0] as String,a[1] as String,a[2] as String,a[3] as String?,a[4] as Int?,a[5] as String,ignoreExisting=true) }
         true
@@ -97,7 +99,7 @@ class Database(val jdbc: JdbcTemplate, tm: PlatformTransactionManager, private v
             require(teamsFile.isNotBlank() && accountsFile.isNotBlank()) { "Set TEAMS_CSV and ACCOUNTS_CSV before first production startup" }
             write {
                 Files.readAllLines(Path.of(teamsFile)).drop(1).filter { it.isNotBlank() }.forEach { line ->
-                    val p=line.split(',',limit=3);require(p.size==3);jdbc.update("INSERT INTO teams VALUES(?,?,?)",p[0].toInt(),p[1],p[2])
+                    val p=line.split(',',limit=2);require(p.size==2);jdbc.update("INSERT INTO teams(id,description) VALUES(?,?)",p[0].toInt(),p[1])
                 }
                 require(jdbc.queryForObject("SELECT COUNT(*) FROM teams",Int::class.java)==20)
                 Files.readAllLines(Path.of(accountsFile)).drop(1).filter { it.isNotBlank() }.forEach { line ->

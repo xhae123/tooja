@@ -34,13 +34,26 @@ class ManualProvisioningTest {
     fun restartPreservesManualData() {
         val db=database()
         Steps.step("Given: 관리자가 실제 DB에 팀 소개를 직접 넣는다") {
-            db.initialize();db.jdbc.update("INSERT INTO teams VALUES(1,'직접 수정한 이름','직접 작성한 소개')")
+            db.initialize();db.jdbc.update("INSERT INTO teams(id,description) VALUES(1,'직접 작성한 소개')")
         }
         Steps.step("When: 같은 DB를 사용해 서버가 다시 기동한다") { database().initialize() }
         Steps.step("Then: 등록 내용은 그대로이고 나머지 데모 팀·계정은 생기지 않는다") {
-            assertThat(db.jdbc.queryForObject("SELECT name FROM teams WHERE id=1",String::class.java)).isEqualTo("직접 수정한 이름")
+            assertThat(db.jdbc.queryForObject("SELECT description FROM teams WHERE id=1",String::class.java)).isEqualTo("직접 작성한 소개")
             assertThat(db.jdbc.queryForObject("SELECT COUNT(*) FROM teams",Int::class.java)).isEqualTo(1)
             assertThat(db.jdbc.queryForObject("SELECT COUNT(*) FROM accounts",Int::class.java)).isZero()
+        }
+    }
+    @Test @DisplayName("팀 이름 컬럼이 있던 기존 SQLite DB는 기동 시 이름만 제거하고 소개·투자 관계를 보존한다")
+    fun legacyTeamNameColumnIsDropped() {
+        val db=database()
+        Steps.step("Given: 팀 이름 컬럼이 있는 이전 스키마에 팀 1개") {
+            db.jdbc.execute("CREATE TABLE teams(id INTEGER PRIMARY KEY CHECK(id BETWEEN 1 AND 20), name TEXT NOT NULL, description TEXT NOT NULL)")
+            db.jdbc.update("INSERT INTO teams VALUES(1,'예전 이름','예전 소개')")
+        }
+        Steps.step("When: 새 버전 서버가 기동한다") { db.initialize() }
+        Steps.step("Then: name 컬럼만 사라지고 소개는 남는다") {
+            assertThat(db.jdbc.queryForList("PRAGMA table_info(teams)").map { it["name"] }).containsExactly("id","description")
+            assertThat(db.jdbc.queryForObject("SELECT description FROM teams WHERE id=1",String::class.java)).isEqualTo("예전 소개")
         }
     }
     @Test @DisplayName("자동 CSV 등록 기본 모드는 빈 DB에서 파일 없으면 시작을 거절한다")
@@ -53,7 +66,7 @@ class ManualProvisioningTest {
     }
     private fun csvFiles(): Pair<String,String> {
         val teams=directory.resolve("teams.csv")
-        java.nio.file.Files.writeString(teams,"id,name,description\n"+(1..20).joinToString("\n") { "$it,팀$it,소개$it" })
+        java.nio.file.Files.writeString(teams,"id,description\n"+(1..20).joinToString("\n") { "$it,소개$it, 쉼표가 있어도 한 칸" })
         val accounts=directory.resolve("accounts.csv")
         java.nio.file.Files.writeString(accounts,"id,code,role,kind,team,alias\nparticipant,0001,INVESTOR,PARTICIPANT,1,참가자\nstaff,0002,INVESTOR,STAFF,,운영팀\nadmin,0003,ADMIN,,,관리자\n")
         return accounts.toString() to teams.toString()

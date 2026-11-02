@@ -28,7 +28,6 @@ data class InvestorRanking(
 
 data class ScoreContribution(
     val teamId: Int,
-    val serviceName: String,
     val teamRank: Int,
     val investedAmount: Int,
     val pointsPerUnit: Int,
@@ -45,7 +44,7 @@ internal object InvestorRankingPolicy {
         return if (rank <= 10) 11 - rank else 10 - rank
     }
 
-    fun teamRanks(teams: List<Triple<Int, String, Long>>): List<RankingRow> =
+    fun teamRanks(teams: List<Pair<Int, Long>>): List<RankingRow> =
         Policy.rank(teams).map { if (it.raisedAmount == 0L) it.copy(rank=20) else it }
 
     fun calculate(
@@ -61,7 +60,7 @@ internal object InvestorRankingPolicy {
             investor.id to investmentsByInvestor[investor.id].orEmpty().sortedBy { it.teamId }.map { investment ->
                 val team = teamsById.getValue(investment.teamId)
                 val points = points(team.rank)
-                ScoreContribution(team.teamId, team.serviceName, team.rank, investment.amount, points,
+                ScoreContribution(team.teamId, team.rank, investment.amount, points,
                     investment.amount / 100000 * points)
             }
         }
@@ -93,7 +92,7 @@ class InvestorRankingService(private val db: Database, private val clock: Clock)
     private data class Snapshot(
         val version: Long,
         val asOf: Instant,
-        val teams: List<Triple<Int, String, Long>>,
+        val teams: List<Pair<Int, Long>>,
         val investors: List<RankingInvestor>,
         val investments: List<RankingInvestment>
     )
@@ -104,7 +103,7 @@ class InvestorRankingService(private val db: Database, private val clock: Clock)
         val snapshot = db.snapshot {
             val version = db.jdbc.queryForObject("SELECT version FROM metadata WHERE id=1", Long::class.java)!!
             val asOf = clock.instant()
-            val teams = db.jdbc.queryForList("SELECT id,name FROM teams ORDER BY id")
+            val teams = db.jdbc.queryForList("SELECT id FROM teams ORDER BY id")
             val investors = db.jdbc.queryForList("SELECT id,alias,kind,team_id FROM accounts WHERE role='INVESTOR' AND deleted_at IS NULL").map {
                 RankingInvestor(it["id"].toString(), it["alias"].toString(), it["kind"].toString(),
                     (it["team_id"] as Number?)?.toInt())
@@ -115,7 +114,7 @@ class InvestorRankingService(private val db: Database, private val clock: Clock)
             // All committed investments contribute to team popularity, even when
             // the requested output group excludes the investor who made them.
             val raised = investments.groupingBy { it.teamId }.fold(0L) { total, it -> total + it.amount }
-            Snapshot(version, asOf, teams.map { Triple((it["id"] as Number).toInt(), it["name"].toString(), raised[(it["id"] as Number).toInt()] ?: 0L) }, investors, investments)
+            Snapshot(version, asOf, teams.map { (it["id"] as Number).toInt().let { id -> id to (raised[id] ?: 0L) } }, investors, investments)
         }
         // Release the DB connection before scoring and sorting the investors.
         val items = InvestorRankingPolicy.calculate(group, snapshot.investors,

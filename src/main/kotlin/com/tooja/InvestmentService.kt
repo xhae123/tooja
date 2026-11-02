@@ -29,23 +29,23 @@ class InvestmentService(private val db: Database, private val clock: Clock) {
         val tid=(r["id"] as Number).toInt()
         val amount=db.jdbc.queryForList("SELECT amount FROM investments WHERE account_id=? AND team_id=?",i.investorId,tid).firstOrNull()?.get("amount")?.let{(it as Number).toInt()}?:0
         val state=Policy.state(i.kind,i.teamId,tid,amount,i.balance)
-        return Team(tid,r["name"].toString(),r["description"].toString(),state,amount,Policy.allowed(state,i.balance))
+        return Team(tid,r["description"].toString(),state,amount,Policy.allowed(state,i.balance))
     }
     fun teamDetail(id: String,tid: Int): TeamDetail = db.read {
         val i=investor(id);val r=db.jdbc.queryForList("SELECT * FROM teams WHERE id=?",tid).firstOrNull() ?: throw ApiException(404,"RESOURCE_NOT_FOUND","팀을 찾을 수 없습니다.")
         TeamDetail(i,team(i,r),clock.instant(),control())
     }
-    private fun investment(r: Map<String,Any?>) = Investment(r["id"].toString(),(r["team_id"] as Number).toInt(),r["name"].toString(),(r["amount"] as Number).toInt(),Instant.parse(r["confirmed_at"].toString()))
+    private fun investment(r: Map<String,Any?>) = Investment(r["id"].toString(),(r["team_id"] as Number).toInt(),(r["amount"] as Number).toInt(),Instant.parse(r["confirmed_at"].toString()))
     fun history(id: String): InvestmentHistory = db.read {
-        val i=investor(id);val items=db.jdbc.queryForList("SELECT i.*,t.name FROM investments i JOIN teams t ON t.id=i.team_id WHERE account_id=? ORDER BY confirmed_at DESC,i.version DESC",id).map(::investment)
+        val i=investor(id);val items=db.jdbc.queryForList("SELECT * FROM investments WHERE account_id=? ORDER BY confirmed_at DESC,version DESC",id).map(::investment)
         InvestmentHistory(i,items,items.size,clock.instant())
     }
     fun detail(id: String,iid: String): InvestmentDetail = db.read {
-        val r=db.jdbc.queryForList("SELECT i.*,t.name FROM investments i JOIN teams t ON t.id=i.team_id WHERE i.id=? AND account_id=?",iid,id).firstOrNull() ?: throw ApiException(404,"RESOURCE_NOT_FOUND","거래를 찾을 수 없습니다.")
+        val r=db.jdbc.queryForList("SELECT * FROM investments WHERE id=? AND account_id=?",iid,id).firstOrNull() ?: throw ApiException(404,"RESOURCE_NOT_FOUND","거래를 찾을 수 없습니다.")
         InvestmentDetail(investment(r),investor(id).balance,clock.instant())
     }
     private fun receipt(iid: String): InvestmentReceipt {
-        val r=db.jdbc.queryForList("SELECT i.*,t.name FROM investments i JOIN teams t ON t.id=i.team_id WHERE i.id=?",iid).first()
+        val r=db.jdbc.queryForList("SELECT * FROM investments WHERE id=?",iid).first()
         return InvestmentReceipt(investment(r),(r["balance_after"] as Number).toInt(),(r["version"] as Number).toLong())
     }
     fun create(id: String,key: String,input: InvestmentInput): InvestmentReceipt {
@@ -95,7 +95,7 @@ class InvestmentService(private val db: Database, private val clock: Clock) {
     private fun metrics(items: List<Investor>): Metrics = Metrics(items.size,items.count { it.investedAmount>0 },items.sumOf { it.issuedAmount.toLong() },items.sumOf { it.investedAmount.toLong() },items.sumOf { it.balance.toLong() },items.count { it.spendingStatus=="COMPLETED" },items.count { it.spendingStatus=="UNSPENT" })
     fun overview(): Overview = db.read { val all=list(null,null,null,null).items;Overview(metrics(all),metrics(all.filter{it.kind=="PARTICIPANT"}),metrics(all.filter{it.kind=="STAFF"}),clock.instant(),db.jdbc.queryForObject("SELECT version FROM metadata WHERE id=1",Long::class.java)!!,control()) }
     fun dashboard(): Dashboard = db.read {
-        val rows=db.jdbc.queryForList("SELECT t.id,t.name,COALESCE(SUM(i.amount),0) AS amount FROM teams t LEFT JOIN investments i ON i.team_id=t.id GROUP BY t.id,t.name").map { Triple((it["id"] as Number).toInt(),it["name"].toString(),(it["amount"] as Number).toLong()) }
-        Dashboard(db.jdbc.queryForObject("SELECT version FROM metadata WHERE id=1",Long::class.java)!!,clock.instant(),rows.sumOf{it.third},db.jdbc.queryForObject("SELECT COUNT(DISTINCT account_id) FROM investments",Int::class.java)!!,Policy.rank(rows))
+        val rows=db.jdbc.queryForList("SELECT t.id,COALESCE(SUM(i.amount),0) AS amount FROM teams t LEFT JOIN investments i ON i.team_id=t.id GROUP BY t.id").map { (it["id"] as Number).toInt() to (it["amount"] as Number).toLong() }
+        Dashboard(db.jdbc.queryForObject("SELECT version FROM metadata WHERE id=1",Long::class.java)!!,clock.instant(),rows.sumOf{it.second},db.jdbc.queryForObject("SELECT COUNT(DISTINCT account_id) FROM investments",Int::class.java)!!,Policy.rank(rows))
     }
 }
